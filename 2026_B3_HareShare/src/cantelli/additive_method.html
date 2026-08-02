@@ -1,0 +1,1119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hare Share — X(x,a,S) Lab</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [["\\(", "\\)"]] },
+      options: { skipHtmlTags: ["script", "noscript", "style", "textarea", "pre"] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f4f2ff;
+      --muted: #a6a1bd;
+      --faint: #716b89;
+      --paper: #0d0b13;
+      --panel: #17131f;
+      --panel-2: #201a2c;
+      --line: #393047;
+      --acid: #d8ff63;
+      --cyan: #62f5e7;
+      --violet: #8c63ff;
+      --danger: #ff6f91;
+      --shadow: 0 24px 70px rgb(0 0 0 / 38%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 0%, rgb(140 99 255 / 17%), transparent 29rem),
+        radial-gradient(circle at 88% 16%, rgb(98 245 231 / 8%), transparent 24rem),
+        var(--paper);
+    }
+
+    button, select, textarea, input { font: inherit; }
+
+    button:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 2px solid var(--acid);
+      outline-offset: 2px;
+    }
+
+    .shell {
+      width: min(1480px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 34px 0 56px;
+    }
+
+    header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 28px;
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--acid);
+      font: 700 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 4.4vw, 64px);
+      line-height: .96;
+      letter-spacing: -.055em;
+    }
+
+    .formula {
+      max-width: 610px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .formula code, .mono {
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(155deg, rgb(32 26 44 / 96%), rgb(19 16 27 / 96%));
+      box-shadow: var(--shadow);
+    }
+
+    .controls {
+      position: sticky;
+      top: 16px;
+      padding: 18px;
+    }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 0 10px;
+      color: var(--muted);
+      font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .section-label span {
+      color: var(--faint);
+      font-weight: 500;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .select-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    label.field { display: grid; gap: 6px; }
+
+    label.field > span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    select, textarea {
+      width: 100%;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0f0c16;
+    }
+
+    select { height: 42px; padding: 0 11px; }
+
+    textarea {
+      min-height: 116px;
+      resize: vertical;
+      padding: 11px 12px;
+      font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .validation {
+      min-height: 34px;
+      margin: 7px 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .validation.error { color: var(--danger); }
+    .validation.good { color: var(--cyan); }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .soft-button, .toggle-button {
+      min-height: 36px;
+      padding: 7px 10px;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: rgb(255 255 255 / 2%);
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+
+    .soft-button:hover, .toggle-button:hover {
+      color: var(--ink);
+      border-color: #665879;
+      background: rgb(255 255 255 / 5%);
+    }
+
+    .soft-button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .wide-button { grid-column: 1 / -1; }
+
+    .divider {
+      height: 1px;
+      margin: 18px 0;
+      background: var(--line);
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .toggle-button[aria-pressed="true"] {
+      color: #0b1010;
+      border-color: var(--cyan);
+      background: var(--cyan);
+    }
+
+    .main { display: grid; gap: 16px; min-width: 0; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      overflow: hidden;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 17px 18px 15px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .metric:nth-child(3n) { border-right: 0; }
+    .metric:nth-last-child(-n + 3) { border-bottom: 0; }
+
+    .metric-value {
+      display: block;
+      overflow: hidden;
+      color: var(--ink);
+      font: 650 clamp(22px, 3vw, 34px)/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: -.05em;
+      text-overflow: ellipsis;
+    }
+
+    .metric:first-child .metric-value { color: var(--acid); }
+
+    .metric-theory {
+      margin-left: .18em;
+      color: var(--muted);
+      font-size: .52em;
+      font-weight: 500;
+      letter-spacing: -.03em;
+    }
+
+    .metric-label {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .metric-formula {
+      display: block;
+      min-height: 18px;
+      margin-top: 7px;
+      overflow: hidden;
+      color: var(--faint);
+      font: 10px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .heat-card { min-width: 0; overflow: hidden; }
+
+    .heat-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 16px 18px 13px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .heat-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 650;
+    }
+
+    .heat-subtitle {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .axis-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 9px;
+    }
+
+    .axis-tool {
+      min-height: 27px;
+      padding: 4px 8px;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: transparent;
+      font: 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      cursor: pointer;
+    }
+
+    .axis-tool:hover {
+      color: var(--ink);
+      border-color: #665879;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: nowrap;
+    }
+
+    .legend-ramp {
+      width: 110px;
+      height: 8px;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #231b33, #694cc1 48%, #d8ff63);
+    }
+
+    .heat-scroll {
+      overflow: auto;
+      max-height: min(68vh, 730px);
+      padding: 13px;
+      background:
+        linear-gradient(rgb(255 255 255 / 2%) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(255 255 255 / 2%) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .heat-grid {
+      display: grid;
+      gap: 2px;
+      width: 100%;
+      min-width: var(--grid-min);
+      grid-template-columns: 38px repeat(var(--p), minmax(17px, 1fr));
+    }
+
+    .axis, .corner {
+      display: grid;
+      place-items: center;
+      height: 20px;
+      color: var(--faint);
+      font: 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    button.axis {
+      padding: 0;
+      border: 0;
+      background: #15111d;
+      cursor: pointer;
+    }
+
+    button.axis:hover { color: var(--ink); }
+
+    button.axis.conditioned {
+      color: var(--acid);
+      background: #292231;
+      box-shadow: inset 0 -2px var(--acid);
+    }
+
+    .row-axis {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      height: 20px;
+      border-radius: 4px;
+      background: #15111d;
+    }
+
+    .row-axis.stump {
+      color: var(--cyan);
+      box-shadow: inset 3px 0 var(--cyan);
+    }
+
+    .row-axis.conditioned {
+      color: var(--acid);
+      box-shadow: inset 3px 0 var(--acid);
+    }
+
+    .row-axis.stump.conditioned {
+      box-shadow: inset 3px 0 var(--cyan), inset 0 -2px var(--acid);
+    }
+
+    .heat-cell {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-width: 17px;
+      height: 20px;
+      padding: 0;
+      color: rgb(255 255 255 / 76%);
+      border: 0;
+      border-radius: 3px;
+      background: hsl(
+        calc(258deg - var(--level) * 190deg)
+        calc(38% + var(--level) * 45%)
+        calc(15% + var(--level) * 49%)
+      );
+      font: 8px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      cursor: pointer;
+    }
+
+    .heat-cell.illegal { opacity: .28; }
+    .heat-grid.show-illegal .heat-cell.illegal { opacity: .76; }
+    .heat-cell.outside-condition { filter: saturate(.3) brightness(.62); }
+
+    .heat-cell.survivor {
+      color: #0d140d;
+      box-shadow: inset 0 0 0 1px rgb(216 255 99 / 70%);
+      font-weight: 800;
+    }
+
+    .heat-cell.selected {
+      z-index: 1;
+      outline: 2px solid white;
+      outline-offset: 1px;
+    }
+
+    .below {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr);
+      gap: 16px;
+    }
+
+    .detail, .distribution { padding: 18px; }
+
+    .detail-empty {
+      margin: 18px 0 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .trajectory {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 13px 0 5px;
+    }
+
+    .hop {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      width: 35px;
+      height: 35px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      color: var(--danger);
+      background: #100d16;
+      font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .hop.hit {
+      color: #07110f;
+      border-color: var(--cyan);
+      background: var(--cyan);
+    }
+
+    .arrow { color: var(--faint); font-size: 12px; }
+
+    .detail-copy {
+      margin: 11px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .bars {
+      display: grid;
+      gap: 7px;
+      margin-top: 14px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 24px 1fr 46px;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .bar-track {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 3px;
+      background: #0f0c16;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: var(--width);
+      background: linear-gradient(90deg, var(--violet), var(--cyan));
+    }
+
+    footer {
+      margin-top: 18px;
+      color: var(--faint);
+      font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-align: right;
+    }
+
+    @media (max-width: 900px) {
+      header { display: grid; }
+      .workspace { grid-template-columns: 1fr; }
+      .controls { position: static; }
+      .below { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 18px, 1480px); padding-top: 22px; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .metric { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .metric:nth-child(2n) { border-right: 0; }
+      .metric:nth-last-child(-n + 2) { border-bottom: 0; }
+      .heat-head { align-items: start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">Cantelli research instrument</p>
+        <h1>The X-grid</h1>
+      </div>
+      <p class="formula">
+        For every start and jump pair, inspect
+        <code>X(x,a,S)=∑<sub>r=0</sub><sup>t</sup> 1<sub>S</sub>(x+ra)</code>.
+        A legal hare survives exactly when <code>x∈S</code> and
+        <code>X=t+1</code>.
+      </p>
+    </header>
+
+    <div class="workspace">
+      <aside class="card controls">
+        <p class="section-label">Experiment <span>mod p</span></p>
+        <div class="select-row">
+          <label class="field">
+            <span>Prime p</span>
+            <select id="prime" aria-label="Prime p"></select>
+          </label>
+          <label class="field">
+            <span>Minutes t</span>
+            <select id="minutes" aria-label="Minutes t"></select>
+          </label>
+        </div>
+
+        <p class="section-label">Stump set S <span id="setTarget"></span></p>
+        <label class="field">
+          <span>Comma/space-separated residues</span>
+          <textarea id="setInput" spellcheck="false" aria-describedby="validation"></textarea>
+        </label>
+        <div id="validation" class="validation" aria-live="polite"></div>
+
+        <div class="preset-grid" aria-label="Set presets">
+          <button class="soft-button" data-preset="interval">Interval</button>
+          <button class="soft-button" data-preset="residues">Quadratic residues</button>
+          <button class="soft-button" data-preset="nonresidues">Nonresidues</button>
+          <button class="soft-button" data-preset="random">Random set</button>
+          <button id="maximizerButton" class="soft-button wide-button">
+            Random maximizing set
+          </button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="toggle-row">
+          <span>Show non-stump starts</span>
+          <button id="illegalToggle" class="toggle-button" aria-pressed="false">
+            Dimmed
+          </button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section class="card metrics" aria-label="Summary statistics">
+          <div class="metric">
+            <span id="survivors" class="metric-value">—</span>
+            <span class="metric-label">\(F(S,p,t)\) survivors</span>
+          </div>
+          <div class="metric">
+            <span id="meanX" class="metric-value">—</span>
+            <span class="metric-label">Global \(\mu\)</span>
+            <span id="meanFormula" class="metric-formula">
+              \(\mu_{\rm th}=(t+1)\frac{q}{p}\)
+            </span>
+          </div>
+          <div class="metric">
+            <span id="varianceX" class="metric-value">—</span>
+            <span class="metric-label">Global \(\operatorname{Var}(X)\)</span>
+            <span id="varianceFormula" class="metric-formula">
+              \(\operatorname{Var}_{\rm th}(X)=(t+1)\frac{q}{p}\frac{p-q}{p}\)
+            </span>
+          </div>
+          <div class="metric">
+            <span id="survivalRate" class="metric-value">—</span>
+            <span class="metric-label">Legal survival rate</span>
+          </div>
+          <div class="metric">
+            <span id="conditionalMean" class="metric-value">—</span>
+            <span class="metric-label">Local \(\mu\) (selected)</span>
+            <span id="conditionalSize" class="metric-formula"></span>
+          </div>
+          <div class="metric">
+            <span id="conditionalVariance" class="metric-value">—</span>
+            <span class="metric-label">Local \(\operatorname{Var}(X)\) (selected)</span>
+            <span class="metric-formula">selected rows × selected columns</span>
+          </div>
+        </section>
+
+        <section class="card heat-card">
+          <div class="heat-head">
+            <div>
+              <h2 class="heat-title">Successful positions by start × jump</h2>
+              <p class="heat-subtitle">Rows are x; columns are a. Click axis labels to condition the distribution.</p>
+              <div class="axis-tools" aria-label="Conditioning shortcuts">
+                <button class="axis-tool" data-condition="rows-stumps">Rows: S</button>
+                <button class="axis-tool" data-condition="rows-all">Rows: all</button>
+                <button class="axis-tool" data-condition="columns-all">Columns: all</button>
+                <button class="axis-tool" data-condition="columns-stumps">Columns: S</button>
+              </div>
+            </div>
+            <div class="legend" aria-label="Heat scale">
+              <span>0</span><span class="legend-ramp"></span><span id="legendMax">t+1</span>
+            </div>
+          </div>
+          <div class="heat-scroll">
+            <div id="heatGrid" class="heat-grid" role="grid" aria-label="X values"></div>
+          </div>
+        </section>
+
+        <div class="below">
+          <section class="card detail">
+            <p class="section-label">Selected trajectory <span id="selectedCoords"></span></p>
+            <div id="trajectory">
+              <p class="detail-empty">Select a heatmap cell to inspect every landing.</p>
+            </div>
+          </section>
+
+          <section class="card distribution">
+            <p class="section-label">Conditional distribution of X <span id="distributionScope"></span></p>
+            <div id="bars" class="bars"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <footer>All arithmetic is modulo p · cyan marks stump rows · acid axes define the conditional sample</footer>
+  </div>
+
+  <script src="maxima_data.js"></script>
+  <script>
+    (() => {
+      "use strict";
+
+      const primes = [
+        3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41,
+        43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97,
+      ];
+      const elements = {
+        prime: document.querySelector("#prime"),
+        minutes: document.querySelector("#minutes"),
+        setInput: document.querySelector("#setInput"),
+        setTarget: document.querySelector("#setTarget"),
+        validation: document.querySelector("#validation"),
+        maximizerButton: document.querySelector("#maximizerButton"),
+        illegalToggle: document.querySelector("#illegalToggle"),
+        survivors: document.querySelector("#survivors"),
+        survivalRate: document.querySelector("#survivalRate"),
+        meanX: document.querySelector("#meanX"),
+        varianceX: document.querySelector("#varianceX"),
+        meanFormula: document.querySelector("#meanFormula"),
+        varianceFormula: document.querySelector("#varianceFormula"),
+        conditionalMean: document.querySelector("#conditionalMean"),
+        conditionalVariance: document.querySelector("#conditionalVariance"),
+        conditionalSize: document.querySelector("#conditionalSize"),
+        legendMax: document.querySelector("#legendMax"),
+        heatGrid: document.querySelector("#heatGrid"),
+        trajectory: document.querySelector("#trajectory"),
+        selectedCoords: document.querySelector("#selectedCoords"),
+        bars: document.querySelector("#bars"),
+        distributionScope: document.querySelector("#distributionScope"),
+      };
+
+      let state = {
+        p: 23,
+        t: 4,
+        set: new Set(),
+        valid: true,
+        showIllegal: false,
+        selected: null,
+        selectedRows: new Set(),
+        selectedColumns: new Set(),
+      };
+
+      const mod = (value, p = state.p) => ((value % p) + p) % p;
+      const stumpCount = () => (state.p - 1) / 2;
+      const sortedSet = () => [...state.set].sort((a, b) => a - b);
+
+      function intervalSet() {
+        return new Set(Array.from({ length: stumpCount() }, (_, index) => index));
+      }
+
+      function residueSet(wantResidues) {
+        const residues = new Set();
+        for (let value = 1; value < state.p; value += 1) {
+          residues.add((value * value) % state.p);
+        }
+        return new Set(
+          Array.from({ length: state.p - 1 }, (_, index) => index + 1)
+            .filter(value => residues.has(value) === wantResidues)
+        );
+      }
+
+      function randomSet() {
+        const values = Array.from({ length: state.p }, (_, index) => index);
+        for (let index = values.length - 1; index > 0; index -= 1) {
+          const other = Math.floor(Math.random() * (index + 1));
+          [values[index], values[other]] = [values[other], values[index]];
+        }
+        return new Set(values.slice(0, stumpCount()));
+      }
+
+      function currentMaximum() {
+        return window.HARE_SHARE_MAXIMA?.[`${state.p},${state.t}`] ?? null;
+      }
+
+      function randomAffineSet(values) {
+        const multiplier = 1 + Math.floor(Math.random() * (state.p - 1));
+        const shift = Math.floor(Math.random() * state.p);
+        return new Set(values.map(value => mod(multiplier * value + shift)));
+      }
+
+      function updateMaximizerButton() {
+        const maximum = currentMaximum();
+        elements.maximizerButton.disabled = !maximum;
+        elements.maximizerButton.textContent = maximum?.proven
+          ? "Random maximizing set"
+          : "Random best-known set";
+      }
+
+      function chooseRandomMaximum() {
+        const maximum = currentMaximum();
+        if (!maximum) return;
+        state.selected = null;
+
+        const allSetsMaximize = maximum.proven &&
+          maximum.method === "analytic" &&
+          (state.t === 1 || state.t === stumpCount());
+        const nextSet = allSetsMaximize
+          ? randomSet()
+          : randomAffineSet(maximum.set);
+        writeSet(nextSet);
+        elements.validation.textContent += maximum.proven
+          ? ` · random ${allSetsMaximize ? "" : "affine "}image of a proven maximizer`
+          : ` · random affine image of best-known F=${maximum.value}`;
+      }
+
+      function resetConditioning() {
+        state.selectedRows = new Set(state.set);
+        state.selectedColumns = new Set(
+          Array.from({ length: state.p }, (_, index) => index)
+        );
+      }
+
+      function writeSet(nextSet) {
+        state.set = nextSet;
+        elements.setInput.value = sortedSet().join(", ");
+        validateAndRender(true);
+      }
+
+      function parseSet(text) {
+        const trimmed = text.trim();
+        if (!trimmed) return { values: [], invalid: [] };
+        const tokens = trimmed.split(/[\s,;{}[\]()]+/).filter(Boolean);
+        const values = [];
+        const invalid = [];
+        for (const token of tokens) {
+          if (!/^-?\d+$/.test(token)) {
+            invalid.push(token);
+          } else {
+            values.push(Number(token));
+          }
+        }
+        return { values, invalid };
+      }
+
+      function validateAndRender(resetSelection = false) {
+        const parsed = parseSet(elements.setInput.value);
+        const normalized = parsed.values.map(value => mod(value));
+        const duplicates = normalized.length - new Set(normalized).size;
+        state.set = new Set(normalized);
+        const expected = stumpCount();
+        const problems = [];
+        if (parsed.invalid.length) problems.push(`Unreadable: ${parsed.invalid.join(", ")}`);
+        if (duplicates) problems.push(`${duplicates} duplicate residue${duplicates === 1 ? "" : "s"}`);
+        if (state.set.size !== expected) problems.push(`Need ${expected} distinct stumps; found ${state.set.size}`);
+        state.valid = problems.length === 0;
+        if (resetSelection) resetConditioning();
+
+        elements.validation.className = `validation ${state.valid ? "good" : "error"}`;
+        elements.validation.textContent = state.valid
+          ? `Valid stump set · ${expected} holes remain`
+          : problems.join(" · ");
+        elements.setTarget.textContent = `exactly ${expected} of ${state.p}`;
+        render();
+      }
+
+      function xValue(x, a) {
+        let hits = 0;
+        for (let step = 0; step <= state.t; step += 1) {
+          if (state.set.has(mod(x + step * a))) hits += 1;
+        }
+        return hits;
+      }
+
+      function calculate() {
+        const matrix = [];
+        const conditionalDistribution = Array(state.t + 2).fill(0);
+        let survivors = 0;
+        let globalTotal = 0;
+        let globalSquares = 0;
+        let conditionalTotal = 0;
+        let conditionalSquares = 0;
+        let conditionalCount = 0;
+        for (let x = 0; x < state.p; x += 1) {
+          const row = [];
+          for (let a = 0; a < state.p; a += 1) {
+            const value = xValue(x, a);
+            row.push(value);
+            globalTotal += value;
+            globalSquares += value * value;
+            if (state.set.has(x) && value === state.t + 1) survivors += 1;
+            if (state.selectedRows.has(x) && state.selectedColumns.has(a)) {
+              conditionalDistribution[value] += 1;
+              conditionalTotal += value;
+              conditionalSquares += value * value;
+              conditionalCount += 1;
+            }
+          }
+          matrix.push(row);
+        }
+        const conditionalMean = conditionalCount
+          ? conditionalTotal / conditionalCount
+          : null;
+        const globalCount = state.p * state.p;
+        const globalMean = globalTotal / globalCount;
+        return {
+          matrix,
+          conditionalDistribution,
+          conditionalCount,
+          survivors,
+          globalMean,
+          globalVariance: globalSquares / globalCount - globalMean * globalMean,
+          conditionalMean,
+          conditionalVariance: conditionalCount
+            ? conditionalSquares / conditionalCount - conditionalMean * conditionalMean
+            : null,
+        };
+      }
+
+      function renderMetrics(result) {
+        elements.survivors.textContent = state.valid ? result.survivors.toLocaleString() : "—";
+        const legal = state.p * state.set.size;
+        elements.survivalRate.textContent = state.valid && legal
+          ? `${(100 * result.survivors / legal).toFixed(1)}%`
+          : "—";
+        const q = state.set.size;
+        const density = q / state.p;
+        const referenceMean = (state.t + 1) * density;
+        const referenceVariance = (state.t + 1) * density * ((state.p - q) / state.p);
+        elements.meanX.innerHTML =
+          `${result.globalMean.toFixed(3)}` +
+          `<span class="metric-theory">(${referenceMean.toFixed(3)})</span>`;
+        elements.varianceX.innerHTML =
+          `${result.globalVariance.toFixed(3)}` +
+          `<span class="metric-theory">(${referenceVariance.toFixed(3)})</span>`;
+        elements.conditionalMean.textContent = result.conditionalMean === null
+          ? "—"
+          : result.conditionalMean.toFixed(3);
+        elements.conditionalVariance.textContent = result.conditionalVariance === null
+          ? "—"
+          : result.conditionalVariance.toFixed(3);
+        elements.conditionalSize.textContent =
+          `${state.selectedRows.size} rows × ${state.selectedColumns.size} columns = ${result.conditionalCount}`;
+        elements.legendMax.textContent = String(state.t + 1);
+      }
+
+      function renderGrid(result) {
+        const fragment = document.createDocumentFragment();
+        elements.heatGrid.innerHTML = "";
+        elements.heatGrid.style.setProperty("--p", state.p);
+        elements.heatGrid.style.setProperty("--grid-min", `${48 + 22 * state.p}px`);
+        elements.heatGrid.classList.toggle("show-illegal", state.showIllegal);
+
+        const corner = document.createElement("div");
+        corner.className = "corner";
+        corner.textContent = "x\\a";
+        fragment.append(corner);
+        for (let a = 0; a < state.p; a += 1) {
+          const label = document.createElement("button");
+          label.type = "button";
+          label.className = `axis ${state.selectedColumns.has(a) ? "conditioned" : ""}`;
+          label.textContent = a;
+          label.title = `${state.selectedColumns.has(a) ? "Remove" : "Add"} column a=${a}`;
+          label.setAttribute("aria-pressed", String(state.selectedColumns.has(a)));
+          label.addEventListener("click", () => {
+            if (state.selectedColumns.has(a)) state.selectedColumns.delete(a);
+            else state.selectedColumns.add(a);
+            render();
+          });
+          fragment.append(label);
+        }
+
+        for (let x = 0; x < state.p; x += 1) {
+          const rowLabel = document.createElement("button");
+          rowLabel.type = "button";
+          rowLabel.className = [
+            "axis",
+            "row-axis",
+            state.set.has(x) ? "stump" : "",
+            state.selectedRows.has(x) ? "conditioned" : "",
+          ].filter(Boolean).join(" ");
+          rowLabel.textContent = x;
+          rowLabel.title = `${state.selectedRows.has(x) ? "Remove" : "Add"} row x=${x}`;
+          rowLabel.setAttribute("aria-pressed", String(state.selectedRows.has(x)));
+          rowLabel.addEventListener("click", () => {
+            if (state.selectedRows.has(x)) state.selectedRows.delete(x);
+            else state.selectedRows.add(x);
+            render();
+          });
+          fragment.append(rowLabel);
+
+          for (let a = 0; a < state.p; a += 1) {
+            const value = result.matrix[x][a];
+            const legal = state.set.has(x);
+            const survivor = legal && value === state.t + 1;
+            const cell = document.createElement("button");
+            cell.type = "button";
+            cell.className = [
+              "heat-cell",
+              legal ? "" : "illegal",
+              state.selectedRows.has(x) && state.selectedColumns.has(a)
+                ? ""
+                : "outside-condition",
+              survivor ? "survivor" : "",
+              state.selected?.x === x && state.selected?.a === a ? "selected" : "",
+            ].filter(Boolean).join(" ");
+            cell.style.setProperty("--level", (value / (state.t + 1)).toFixed(4));
+            cell.textContent = value;
+            cell.title = `x=${x}, a=${a}: X=${value}${survivor ? " — survives" : ""}`;
+            cell.setAttribute("role", "gridcell");
+            cell.setAttribute("aria-label", cell.title);
+            cell.addEventListener("click", () => {
+              state.selected = { x, a };
+              render();
+            });
+            fragment.append(cell);
+          }
+        }
+        elements.heatGrid.append(fragment);
+      }
+
+      function renderTrajectory() {
+        const selected = state.selected;
+        if (!selected) {
+          elements.selectedCoords.textContent = "";
+          elements.trajectory.innerHTML =
+            '<p class="detail-empty">Select a heatmap cell to inspect every landing.</p>';
+          return;
+        }
+        const { x, a } = selected;
+        const value = xValue(x, a);
+        const legal = state.set.has(x);
+        const survives = legal && value === state.t + 1;
+        elements.selectedCoords.textContent = `x=${x}, a=${a}, X=${value}`;
+        const steps = [];
+        for (let step = 0; step <= state.t; step += 1) {
+          const landing = mod(x + step * a);
+          if (step) steps.push('<span class="arrow">→</span>');
+          steps.push(
+            `<span class="hop ${state.set.has(landing) ? "hit" : ""}" ` +
+            `title="r=${step}">${landing}</span>`
+          );
+        }
+        elements.trajectory.innerHTML =
+          `<div class="trajectory">${steps.join("")}</div>` +
+          `<p class="detail-copy">Start ${legal ? "is a stump" : "is a hole"}, and ` +
+          `${value} of ${state.t + 1} inspected positions are stumps. ` +
+          `<span class="mono">${survives ? "This hare survives." : "This pair does not represent a survivor."}</span></p>`;
+      }
+
+      function renderDistribution(result) {
+        const maxCount = Math.max(...result.conditionalDistribution, 1);
+        elements.distributionScope.textContent =
+          `${state.selectedRows.size} × ${state.selectedColumns.size} = ${result.conditionalCount} cells`;
+        elements.bars.innerHTML = result.conditionalDistribution.map((count, value) => `
+          <div class="bar-row">
+            <span>${value}</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="--width:${100 * count / maxCount}%"></div>
+            </div>
+            <span>${count}</span>
+          </div>
+        `).join("");
+      }
+
+      function render() {
+        updateMaximizerButton();
+        const result = calculate();
+        renderMetrics(result);
+        renderGrid(result);
+        renderTrajectory();
+        renderDistribution(result);
+      }
+
+      function populatePrimeSelect() {
+        elements.prime.innerHTML = primes.map(
+          prime => `<option value="${prime}" ${prime === state.p ? "selected" : ""}>${prime}</option>`
+        ).join("");
+      }
+
+      function populateMinutesSelect() {
+        elements.minutes.innerHTML = Array.from(
+          { length: stumpCount() },
+          (_, index) => index + 1
+        ).map(
+          minute => `<option value="${minute}" ${minute === state.t ? "selected" : ""}>${minute}</option>`
+        ).join("");
+      }
+
+      elements.prime.addEventListener("change", () => {
+        state.p = Number(elements.prime.value);
+        state.t = Math.min(state.t, stumpCount());
+        state.selected = null;
+        populateMinutesSelect();
+        writeSet(intervalSet());
+      });
+
+      elements.minutes.addEventListener("change", () => {
+        state.t = Number(elements.minutes.value);
+        state.selected = null;
+        validateAndRender();
+      });
+
+      elements.setInput.addEventListener("input", () => validateAndRender(true));
+
+      document.querySelectorAll("[data-preset]").forEach(button => {
+        button.addEventListener("click", () => {
+          const preset = button.dataset.preset;
+          state.selected = null;
+          if (preset === "interval") writeSet(intervalSet());
+          if (preset === "residues") writeSet(residueSet(true));
+          if (preset === "nonresidues") writeSet(residueSet(false));
+          if (preset === "random") writeSet(randomSet());
+        });
+      });
+
+      elements.maximizerButton.addEventListener("click", chooseRandomMaximum);
+
+      elements.illegalToggle.addEventListener("click", () => {
+        state.showIllegal = !state.showIllegal;
+        elements.illegalToggle.setAttribute("aria-pressed", String(state.showIllegal));
+        elements.illegalToggle.textContent = state.showIllegal ? "Visible" : "Dimmed";
+        render();
+      });
+
+      document.querySelectorAll("[data-condition]").forEach(button => {
+        button.addEventListener("click", () => {
+          const action = button.dataset.condition;
+          if (action === "rows-stumps") state.selectedRows = new Set(state.set);
+          if (action === "rows-all") {
+            state.selectedRows = new Set(
+              Array.from({ length: state.p }, (_, index) => index)
+            );
+          }
+          if (action === "columns-all") {
+            state.selectedColumns = new Set(
+              Array.from({ length: state.p }, (_, index) => index)
+            );
+          }
+          if (action === "columns-stumps") state.selectedColumns = new Set(state.set);
+          render();
+        });
+      });
+
+      populatePrimeSelect();
+      populateMinutesSelect();
+      writeSet(intervalSet());
+    })();
+  </script>
+</body>
+</html>
