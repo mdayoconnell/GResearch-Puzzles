@@ -1,0 +1,561 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{cases}
+\usepackage{float}
+\usepackage{tabularx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{subcaption}
+\usepackage{url}
+\newtheorem{claim}{Claim}
+
+
+\title{GRiddles Series B: Puzzle 3 \\ [0.5em] \large Hare Share}
+
+\author{Micah Day-O'Connell}
+\date{August 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We give a piecewise upper bound for $F(p,m)$, the maximum number of hares
+surviving after $m$ minutes. The bound is exact at $m=1$ and in the two
+tail regimes $\lceil q/2\rceil\leq m\leq q$ and $q\leq m\leq p-1$.
+For $3 \leq m < \left\lceil (p-1)/4 \right\rceil$, a Cantelli-style inequality
+applied to the number of successful hops from a fixed starting point gives
+\[
+F(p,m) \leq q+\frac{(p-1)(p-m-1)}{m+2}.
+\]
+A separate Fourier argument gives the
+sharper estimate $F(p,2) \leq 0.205p^2$ for the remaining case.
+\end{abstract}
+
+\section{Problem Statement}
+
+Let $p>2$ be a prime and let $m$ be an integer with $1\leq m\leq p-1$.
+There are $p$ spots arranged in a circle. Each spot is either a rabbit hole or a tree stump. 
+Exactly $\frac{p+1}{2}$ of these spots are rabbit holes and the rest are tree stumps. 
+At the start, on each tree stump, $p$ hares, labelled $1, 2, \ldots, p$, are placed. 
+Every minute, each remaining hare labelled $i$ makes a single hop, 
+landing on the spot exactly $i$ positions further clockwise. 
+Any hare that lands in a rabbit hole falls in and disappears. 
+Find an upper bound, the best you can, for the number of hares remaining after $m$ minutes, in terms of $p$ and $m$.
+\pagebreak
+
+\section{Solution}
+Let $q=(p-1)/2$ be the number of stumps, and let $F(p,m)$ be the maximum number of hares
+remaining for prime $p$ after $m$ minutes, defined on integer times $1 \leq m \leq p-1$.
+We demonstrate the following piecewise upper bound over five regimes:
+
+\begin{numcases}{F(p,m) \leq}
+  q^2,                         & $m=1$, \label{eq:bound-m1} \\
+  0.205p^2,                    & $m=2$, \label{eq:bound-m2} \\
+  q+\dfrac{(p-1)(p-m-1)}{m+2}, & $3 \leq m < \left\lceil \dfrac{q}{2} \right\rceil$,
+                                  \label{eq:bound-cantelli} \\
+  3q-2m,                       & $\left\lceil \dfrac{q}{2} \right\rceil \leq m < q$,
+                                  \label{eq:bound-sloped-tail} \\
+  q,                           & $q \leq m \leq p-1$.
+                                  \label{eq:bound-flat-tail}
+\end{numcases}
+
+Equality holds for \eqref{eq:bound-m1}, \eqref{eq:bound-sloped-tail}, and
+\eqref{eq:bound-flat-tail}. The two tail formulas agree at $m=q$.
+
+\section{Preliminaries}
+
+The problem is difficult for a few key reasons. First, it is not immediately clear what position of stumps will maximize the number of survivors.
+Our survivor counting function $F$ seems to depend not only on $p$ and $m$ but also on the ``stump set'' $S$.
+The set $S$ is a subset of the cyclic group $\mathbb{Z}/p\mathbb{Z}$ and has cardinality $q = \frac{p-1}{2}$.
+Figure~\ref{fig:three_images} shows how different maximizing configurations can be.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[t]{0.31\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{blockisland.png}
+        \caption{Block + island ($m=2$)}
+        \label{fig:first}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.31\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{archipelago.png}
+        \caption{Archipelago ($m=3$)}
+        \label{fig:second}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.31\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{block.png}
+        \caption{Block ($m=4$)}
+        \label{fig:third}
+    \end{subfigure}
+    \caption{Three maximizing stump configurations for $p=19$.
+    From left to right, they achieve $F(19,2)=45$, $F(19,3)=29$, and
+    $F(19,4)=21$.}
+    \label{fig:three_images}
+\end{figure}
+
+It should be clear from the above figure that the maximizing set is itself a function of $p$ and $m$.
+We cannot expect a single set $S$ to ``globally'' maximize $F$ for all values of $m$. For example, at $m=3$, the archipelago configuration outperforms
+the block + island configuration, which yields only $27$ survivors. 
+However, we can immediately identify two trivial cases where $F$ does not depend on $S$. The first case is at $m=1$. We will have $F(p,1) = q^2$ surviving hares after the first jump - one 
+for every pair in $S \times S$. The time $m=q$ is another trivial case. Every hare with $i\neq0$ has visited $q+1$ distinct spots by then, so it cannot have remained on only $q$ stumps. Thus only the $q$ stationary hares survive and $F(p,m)=q$ for $q\leq m\leq p-1$.
+Crude dimension-matching suggests a bound on the order $F(p,m)=\Theta(p^2/m)$ away from the flat tail. We will prove a bound on the same order by reframing the problem into
+a question that does not depend on the maximizing set. 
+
+\section{Using Cantelli's Bound - A Random Variable Treatment}
+
+Figure 1 illustrates the variety of sets $S$ that maximize $F(p,m)$. Determining the exact set $S$ that maximizes $F(p,m)$ is a difficult problem unlikely to yield a closed-form bound.
+Our general method for bounding $F(p,m)$ will aim 
+to "absorb" the various possible structures of the set $S$. For some stump set $S$ we define the indicator function $s$ as follows:
+
+\begin{equation}
+    s(x)=
+    \begin{cases}
+        1, & x \in S, \\
+        0, & x \notin S.
+    \end{cases}
+\end{equation}
+
+For a starting position $x$ and jump size $i$, define the successful-hops function
+
+\begin{equation}
+    X(x,i) = \sum_{r=0}^m s(x+ri),
+\end{equation}
+where all arguments of $s$ are reduced modulo $p$. We provide an example in Figure~\ref{fig:X}. Set $L=m+1$.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[t]{0.4\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{X_heatmap_p13_t3.png}
+        \caption{A heatmap of $X$. The distribution is defined with reference to a stump set, but trajectories over all possible hares are counted.}
+        \label{fig:X_heatmap}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.4\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{X_frequency_p13_t3.png}
+        \caption{A histogram of the frequency of $X$ over all pairs $(x,i)$.}
+        \label{fig:X_dist}
+    \end{subfigure}
+    \caption{The distribution $X$ for $p=13$, $m=3$. The stump set chosen was the block maximizer $\{0,1,2,3,4,5\}$. 
+    The heatmap (left) and histogram (right) change dramatically with $S$ - but their expectation and variance remain the same.}
+    \label{fig:X}
+\end{figure}
+
+We will prove some properties of $X$ that hold for any valid choice of $S$, and use them to bound $F(p,m)$.
+A hare with starting position $x$ and jump size $i$ survives if and only if $X(x,i)=L$.
+If $X(x,i)<L$, then the hare has fallen into a rabbit hole somewhere along its path. Choose $x$ and $i$
+independently and uniformly from $\mathbb{Z}/p\mathbb{Z}$. For a fixed stump set $S$, this gives the useful counting device
+
+\begin{equation}
+F(S,p,m)=p^2\Pr(X=L),
+\end{equation}
+
+By putting a uniform measure on pairs $(x,i)$, we obtain a random variable $X$ whose behavior at $X=L$
+we can relate to the hare survival function $F$. We will now prove a bound on $F(p,m)$ using Cantelli's bound, an upper limit on the
+probability that a random variable deviates from its mean by a value $\lambda$. For a distribution with mean $\mu$ and variance $\sigma^2$
+Cantelli asserts that
+
+\begin{equation}
+    \text{Pr}(X-\mu \geq \lambda) \leq \frac{\sigma^2}{\sigma^2 + \lambda^2}
+\end{equation}
+
+Since $L=m+1$ is the maximum value of $X$, we have
+\begin{equation}
+    \text{Pr}(X=L) = \text{Pr}(X-\mu \geq L-\mu).
+\end{equation}
+
+And obtain 
+
+\begin{equation}
+    F(p,m) \leq p^2 \frac{\sigma^2}{\sigma^2+(L-\mu)^2}.
+\end{equation}
+
+It now remains for us to find the first and second moments of the function $X$.
+
+\subsection{The First and Second Moments of $X$}
+
+Instead of tracking the trajectory of a single hare, let us pick a position $y \in \{0,1,\dots,p-1\}$ and ask how many visits it receives.
+Hares with jump size $i \equiv 0 \pmod p$ are the easiest to consider. These hares visit the same stump $m+1$ times. Hares with nonzero jump size
+have the orbit $\{x, x+i, x+2i, \dots, x+(p-1)i\}$ and
+will visit every point on the circle exactly once. \footnote{This leverages the fact that $p$ is prime. Every nonzero jump size $i\in\mathbb{Z}/p\mathbb{Z}$ is an additive generator. We will later see how our random variable
+ argument fails for groups with a composite order. If $X$ is defined on a composite group then $\operatorname{Var}(X)$ ceases to be independent of $S$.} An interesting symmetry allows us to find the total visits to $y$ at time $m$:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{0.95\textwidth}{@{}lXc@{}}
+\toprule
+\textbf{Jump Size} $i$ & \textbf{Visit Mechanism} & \textbf{Visits to Spot $y$} \\ \midrule
+$i = 0$ (Stationary) & 1 trajectory visiting every minute for $m+1$ minutes & $m+1$ \\
+$i = 1$ & $m+1$ trajectories visiting for 1 minute each & $m+1$ \\
+$i = 2$ & $m+1$ trajectories visiting for 1 minute each & $m+1$ \\
+\multicolumn{1}{c}{$\vdots$} & \multicolumn{1}{c}{$\vdots$} & $\vdots$ \\
+$i = p-1$ & $m+1$ trajectories visiting for 1 minute each & $m+1$ \\
+\bottomrule
+\end{tabularx}
+\caption{Total visits to any fixed location $y \in \mathbb{Z}/p\mathbb{Z}$ across all $p^2$ hares by minute $m$. Each of the $p$ jump sizes contributes $m+1$ visits.}
+\label{tab:perfect_symmetry}
+\end{table}
+
+Since only $q$ locations on the circle are stumps that contribute to our score, we obtain
+
+\begin{equation}
+\mathbb{E}(X) = \frac{q p (m+1)}{p^2} = \frac{q}{p}(m+1)
+\label{eq:first-moment}
+\end{equation}
+
+Here we have divided by the number of $(x,i)$ pairs to obtain the first moment.
+For the second moment, expand the square as
+\begin{equation}
+\mathbb{E}(X^2)
+=\sum_{r=0}^{m}\sum_{s=0}^{m}
+  \mathbb{E}\bigl[s(x+ri)s(x+si)\bigr].
+\end{equation}
+The $m+1$ diagonal terms, for which $r=s$, each have expectation $q/p$.
+For $r\neq s$, define the coordinate change
+$\Phi_{r,s}(x,i)=(y,z)=(x+ri,x+si)$. It is represented modulo $p$ by the
+$2\times2$ Vandermonde matrix
+\begin{equation}
+\begin{pmatrix} y \\ z \end{pmatrix}
+=
+\begin{pmatrix} 1 & r \\ 1 & s \end{pmatrix}
+\begin{pmatrix} x \\ i \end{pmatrix}
+\pmod p.
+\label{eq:vandermonde-change}
+\end{equation}
+Its determinant is $s-r$. Since $0\leq r,s\leq m\leq p-1$ and $r\neq s$,
+we have $s-r\not\equiv0\pmod p$, so the matrix is invertible over
+$\mathbb{Z}/p\mathbb{Z}$. Explicitly,
+\begin{equation}
+\begin{pmatrix} x \\ i \end{pmatrix}
+=(s-r)^{-1}
+\begin{pmatrix} s & -r \\ -1 & 1 \end{pmatrix}
+\begin{pmatrix} y \\ z \end{pmatrix}
+\pmod p.
+\label{eq:vandermonde-inverse}
+\end{equation}
+Thus $\Phi_{r,s}$ is a bijection of $(\mathbb{Z}/p\mathbb{Z})^2$, and the
+coordinates $(y,z)$ range uniformly over all ordered pairs.
+\footnote{For a cyclic group of composite order, $s-r$ can be a zero divisor
+even when $r\neq s$, so this coordinate change need not be bijective. For
+example, on $\mathbb{Z}/6\mathbb{Z}$ with $m=3$, the configurations
+$\{0,1,2\}$ and $\{0,2,4\}$ have the same expectation but variances
+$10/9$ and $2$, respectively.}
+Each of the $m(m+1)$ off-diagonal terms therefore has expectation $q^2/p^2$,
+and hence
+\begin{equation}
+\mathbb{E}(X^2)
+  =(m+1)\frac{q}{p}+m(m+1)\frac{q^2}{p^2}.
+\label{eq:second-moment}
+\end{equation}
+
+The variance is therefore
+\begin{align}
+\operatorname{Var}(X)
+  &= \mathbb{E}(X^2)-\mathbb{E}(X)^2 \\
+  &= (m+1)\frac{q}{p}
+     +m(m+1)\frac{q^2}{p^2}
+     -\left((m+1)\frac{q}{p}\right)^2 \\
+  &= (m+1)\frac{q(p-q)}{p^2} \\
+  &= (m+1)\frac{p^2-1}{4p^2}.
+\label{eq:variance}
+\end{align}
+
+Substituting \eqref{eq:first-moment} and
+\eqref{eq:variance} into Cantelli's inequality yields the baseline estimate
+\begin{align}
+F(p,m)
+&\leq p^2
+\frac{(m+1)q(p-q)/p^2}
+     {(m+1)q(p-q)/p^2+(m+1)^2(p-q)^2/p^2} \\
+&=p^2\frac{q}{q+(m+1)(p-q)}.
+\label{eq:baseline-cantelli}
+\end{align}
+
+\subsection{Improving our Cantelli Bound}
+
+We can improve the estimate by conditioning on $i\neq0$. Hares with $i=0$
+have $X=m+1$ with multiplicity $q$ and $X=0$ with multiplicity $p-q$.
+Let $X^*$ denote
+the resulting random variable when we eliminate $i=0$ from the sample space. The $i=0$ column contributes $q(m+1)$ to the
+total sum of $X$, while removing it reduces the sample space from $p^2$ to
+$p(p-1)$ pairs. Hence the mean is unchanged:
+\begin{equation}
+\mathbb{E}(X^*)
+=\frac{pq(m+1)-q(m+1)}{p(p-1)}
+=\frac{q}{p}(m+1).
+\end{equation}
+The removed column contributes $q(m+1)^2$ to the sum of squares, so
+\begin{equation}
+\operatorname{Var}(X^*)
+=\frac{(m+1)q(p-q)(p-m-1)}{p^2(p-1)}.
+\end{equation}
+Exactly $q$ surviving hares have $i=0$. Applying Cantelli to $X^*$ therefore
+bounds the remaining survivors by
+\begin{align}
+F(p,m)-q
+&\leq p(p-1)
+\frac{\operatorname{Var}(X^*)}
+     {\operatorname{Var}(X^*)+(m+1-\mathbb{E}(X^*))^2} \\
+&=\frac{(p-1)(p-m-1)}{m+2}.
+\end{align}
+Thus
+\begin{equation}
+    \boxed{
+F(p,m)\leq q+\frac{(p-1)(p-m-1)}{m+2}.}
+\label{eq:improved-cantelli}
+\end{equation}
+
+\subsection{Comments on the Cantelli Bound}
+
+The Cantelli Bound has a few favorable properties, and a few properties that hint at possible improvements. First, it is universally rigid. Since $S$ conveniently vanishes from the first two moments of $X$, we know that no archipelago, island, or any other configuration of $S$ can violate it. 
+In addition, \eqref{eq:improved-cantelli} interpolates the endpoint $F(p,p-1)=q$ and matches the expected $\Theta(p^2/m)$ behavior. The bound is deficient, however, in both the low-$m$ and medium $m\approx q$ regimes. In some sense, by discarding all information about which stump sets maximize at certain times, Cantelli assumes the "worst" possible distribution with the least stringent bound. In fact, Cantelli is maximally effective on a Bernoulli distribution \cite{feller1968}.\footnote{It may occur to us to multiply rather than add the indicators. If $X=\prod_{r=0}^{m}s(x+ri)$, however, we simply obtain a Bernoulli random variable with $\mathbb{E}(X)=F(p,m)/p^2$--the exact quantity we are trying to bound in the first place.} It seems that our random variable treatment pays a price for discarding all information about the maximizing stump set $S$. Our next sections will find better bounds in cases where $S$ can be better understood, and leave Cantelli to bound the messy intermediate regime.
+\section{The Tail Regime - An Exact Bound}
+
+The tail has two pieces. The flat tail was introduced in our preliminary discussion: if $m\geq q$ and
+$i\neq0$, then the positions $x,x+i,\ldots,x+mi$ are $m+1\geq q+1$
+distinct points, but $S$ contains only $q$ points. Thus only the $q$
+stationary hares survive, and
+\begin{equation}
+F(p,m)=q,\qquad q\leq m\leq p-1.
+\label{eq:flat-tail}
+\end{equation}
+
+For the sloped tail, fix $i\neq0$ and read $S$ in the cyclic order
+$0,i,2i,\ldots,(p-1)i$. If the stump-run lengths in this order are
+$\ell_{i,1},\ell_{i,2},\ldots$, then the number of surviving hares with
+jump size $i$ is
+\begin{equation}
+N_i(m)=\sum_r(\ell_{i,r}-m)_+,
+\qquad (u)_+=\max\{u,0\}.
+\label{eq:run-count}
+\end{equation}
+When $m\geq\lceil q/2\rceil$, at most one run in any direction can have
+length greater than $m$, since two such runs would contain more than $q$
+stumps. The remaining input is the following long-run excess bound.
+
+\begin{claim}[Long-run Lemma]
+For $|S|=q$ and $\lceil q/2\rceil\leq m\leq q$,
+\begin{equation}
+\sum_{i\neq0}N_i(m)\leq2(q-m).
+\label{eq:long-run-excess}
+\end{equation}
+\end{claim}
+
+\begin{proof}
+Reverse directions have the same run lengths, so $N_i(m)=N_{-i}(m)$.
+Choose one representative from each pair $\{i,-i\}$ and, whenever its
+longest run has length $\ell_i>m$, retain that run. The elementary
+long-progression overlap count gives
+\begin{equation}
+\sum_{\{i,-i\}}(\ell_i-m)_+\leq q-m:
+\end{equation}
+after the first $m$ points are fixed, a run in a new unoriented direction
+must use a new stump for each unit of excess length. Otherwise two retained
+runs can be shortened to the same endpoints, forcing their common
+differences to agree up to sign. Since all retained runs lie in the
+$q$-element set $S$, there are at most $q-m$ such excess points. Doubling
+to restore both orientations and using \eqref{eq:run-count} proves
+\eqref{eq:long-run-excess}.
+\end{proof}
+
+The $i=0$ hares contribute $q$, so \eqref{eq:long-run-excess} gives
+\begin{equation}
+F(S,p,m)\leq q+2(q-m)=3q-2m.
+\label{eq:sloped-tail-upper}
+\end{equation}
+For the interval $S=\{0,1,\ldots,q-1\}$, the directions $i=1$ and
+$i=-1$ each contribute exactly $q-m$ survivors, and every other nonzero
+direction contributes none in this range. Hence equality holds:
+\begin{equation}
+F(p,m)=3q-2m,\qquad
+\left\lceil\frac q2\right\rceil\leq m\leq q.
+\label{eq:sloped-tail}
+\end{equation}
+
+Figure~\ref{fig:tail-regimes} shows the two formulas meeting at $m=q$ for
+$p=137$, where $q=68$.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.94\textwidth]{f137_tail_regimes.png}
+    \caption{The sloped and flat tail regimes for $p=137$. The scatter
+    points show the integer times, while the two colored lines interpolate
+    the exact formulas $3q-2m$ and $q$.}
+    \label{fig:tail-regimes}
+\end{figure}
+
+\section{Fourier Methods: A Bound on $m=2$}
+The Cantelli estimate is weakest at small $m$. For $m=2$ we can use the
+Fourier transform to incorporate more information about the stump set $S$.
+We define the regular Fourier machinery: roots of unity, forward-transform into frequency space, and inverse transform into circular configuration space:
+\begin{equation}
+\omega=e^{2\pi\mathrm{i}/p},\qquad
+\widehat{s}(k)=\sum_{x\in\mathbb{Z}/p\mathbb{Z}}s(x)\omega^{-kx},
+\qquad
+s(x)=\frac1p\sum_{k\in\mathbb{Z}/p\mathbb{Z}}
+\widehat{s}(k)\omega^{kx}.
+\label{eq:fourier-transform}
+\end{equation}
+We will also make use of Parseval's identity for discrete Fourier transforms which relates the amplitudes in frequency and spatial domains:
+\begin{equation}
+\sum_k |\widehat{s}(k)|^2 = p \sum_x |s(x)|^2 = pq.
+\label{eq:parseval}
+\end{equation}
+We can define the count $F$ as the cyclic autocorrelation of the indicator $s(x)$. For time $m$: 
+\begin{equation}
+F(S,p,m)
+=\sum_{x,i}\prod_{j=0}^{m}s(x+ji) 
+\end{equation}
+
+Expanding each factor $s(x+ji)$ using \eqref{eq:fourier-transform} yields
+\begin{align}
+F(S,p,m)
+&=\frac{1}{p^{m+1}}
+  \sum_{k_0,\ldots,k_m}
+  \left(\prod_{j=0}^{m}\widehat{s}(k_j)\right)
+  \sum_x\omega^{x\sum_jk_j}
+  \sum_i\omega^{i\sum_jjk_j}.
+\label{eq:fourier-expansion}
+\end{align}
+The two inner sums are orthogonality sums. Each equals $p$ when
+its exponent vanishes modulo $p$, and equals $0$ otherwise. Therefore only
+frequency tuples satisfying 
+\begin{equation}
+\sum_{j=0}^{m}k_j=0,
+\qquad
+\sum_{j=0}^{m}j k_j=0
+\pmod p
+\label{eq:fourier-constraints}
+\end{equation}
+survive, and
+\begin{equation}
+F(S,p,m)=p^{1-m}
+\sum_{\substack{k_0,\ldots,k_m\\
+\sum_jk_j=0,\ \sum_jjk_j=0}}
+\prod_{j=0}^{m}\widehat{s}(k_j).
+\label{eq:fourier-general-count}
+\end{equation}
+
+For $m=2$, the constraints are
+$k_0+k_1+k_2=0$ and $k_1+2k_2=0$. Writing $k=k_2$ gives
+$(k_0,k_1,k_2)=(k,-2k,k)$, so
+\begin{equation}
+F(S,p,2)=\frac1p\sum_k
+\widehat{s}(k)^2\widehat{s}(-2k).
+\label{eq:three-ap-fourier}
+\end{equation}
+Separating the zero frequency ($\widehat{s}(0)=q$) and taking absolute values gives the following estimate.\footnote{This is the same three-term-progression correlation that underlies Roth's theorem. See \cite{zhao2019roth}}
+\begin{align}
+F(S,p,2)
+&\leq \frac{q^3}{p}
+ +\frac1p\sum_{k\neq0}
+ |\widehat{s}(k)|^2|\widehat{s}(-2k)| \\
+&\leq \frac{q^3}{p}
+ +\frac{M}{p}\sum_{k\neq0}|\widehat{s}(k)|^2,
+\label{eq:fourier-with-M}
+\end{align}
+where $M=\max_{k\neq0}|\widehat{s}(k)|$. By \eqref{eq:parseval},
+\begin{equation}
+\sum_{k\neq0}|\widehat{s}(k)|^2=pq-q^2=q(p-q).
+\label{eq:nonzero-fourier-mass}
+\end{equation}
+
+It remains to bound one Fourier coefficient. Fix $k\neq0$. From the
+definition of the transform,
+\begin{equation}
+\widehat{s}(k)=\sum_{x\in S}\omega^{-kx}.
+\label{eq:coefficient-as-vectors}
+\end{equation}
+Because multiplication by $k$ permutes $\mathbb{Z}/p\mathbb{Z}$, the terms
+in \eqref{eq:coefficient-as-vectors} are $q$ distinct $p$th roots of unity.
+Thus $\widehat{s}(k)$ is the vector sum of $q$ distinct vertices of a regular
+$p$-gon.
+
+To find the largest possible length, rotate the vector sum until it points
+along the positive real axis. Its length is then the sum of the projections
+of the chosen roots onto that axis. The $q$ largest projections come from
+the $q$ roots closest to the axis, which form a consecutive block around the
+polygon. We may therefore use the block
+$1,\omega,\ldots,\omega^{q-1}$. Its sum is the geometric series
+\begin{align}
+M
+&\leq \left|\sum_{r=0}^{q-1}\omega^r\right| \\
+&=\left|\frac{1-\omega^q}{1-\omega}\right| \\
+&=\frac{2\sin(\pi q/p)}{2\sin(\pi/p)} \\
+&=\frac{\sin(\pi q/p)}{\sin(\pi/p)}.
+\label{eq:vector-length-general}
+\end{align}
+Since $q=(p-1)/2$,
+\begin{align}
+\sin\left(\frac{\pi q}{p}\right)
+&=\sin\left(\frac{\pi}{2}-\frac{\pi}{2p}\right)
+=\cos\left(\frac{\pi}{2p}\right), \\
+\sin\left(\frac{\pi}{p}\right)
+&=2\sin\left(\frac{\pi}{2p}\right)
+\cos\left(\frac{\pi}{2p}\right).
+\end{align}
+Cancelling the cosine factor in \eqref{eq:vector-length-general} gives
+\begin{equation}
+M\leq\frac{1}{2\sin(\pi/(2p))}.
+\label{eq:vector-length}
+\end{equation}
+Combining \eqref{eq:fourier-with-M}--\eqref{eq:vector-length} and using
+$q=(p-1)/2$ gives
+\begin{align}
+\frac{F(S,p,2)}{p^2}
+&\leq
+\frac{(p-1)^3}{8p^3}
++\frac{p^2-1}{8p^3\sin(\pi/(2p))} \\
+&<\frac18+\frac{1}{4\pi}
+<0.205.
+\label{eq:fourier-final}
+\end{align}
+We conclude that
+\begin{equation}
+\boxed{F(p,2)<0.205p^2.}
+\end{equation}
+
+This is strictly less than the Cantelli estimate $F(p,2) \leq q + \frac{p^2 - 4p + 3}{4}$. In theory the same expansion exists for every $m$, but it does not give the same clean
+bound. For general $m$ there are $m-1$ free parameters in the constraints on $k$. Parseval's theorem cannot be applied cleanly for $m>2$.
+
+\section{Discussion}
+We arrive again at the piecewise bound over five regimes:
+
+\begin{numcases}{F(p,m) \leq}
+  q^2,                         & $m=1$, \text{(Regime 1)} \\
+  \alpha(0.205p^2),                    & $m=2$, \text{(Regime 2)} \\
+  \beta(q+\dfrac{(p-1)(p-m-1)}{m+2}), & $3 \leq m < \left\lceil \dfrac{q}{2} \right\rceil$,
+                                  \text{(Regime 3)} \\
+  3q-2m,                       & $\left\lceil \dfrac{q}{2} \right\rceil \leq m < q$,
+                                  \text{(Regime 4)} \\
+  q,                           & $q \leq m \leq p-1$.
+                                  \text{(Regime 5)}
+\end{numcases}
+
+
+This piecewise solution relies on four arguments. Cantelli gives a universal bound that is independent of $S$. The survivor count on our endpoints is independent of $S$ and thus the pigeonhole principle proves equality on regimes 1 and 5. 
+The Long-Run Lemma run
+sloped tail (Regime 4), and the Fourier calculation improves the
+case $m=2$. Taken together, they give a proven piecewise limit on $F$,
+while also giving an insight into why no single stump configuration or bounding method is
+optimal in every regime. 
+The two non-exact regimes have a further degree of freedom to play with - multiplicative constants. Preliminary tests over the first 100 primes suggest values $\alpha = 0.687$ and $\beta = 0.461$ are valid multiplicative constants for regimes 2 and 3 respectively.
+\pagebreak
+\section{Appendix}
+
+Source code used to generate figures and explore solution strategies can be found at a \href{https://github.com/mdayoconnell/GResearch-Puzzles}{public GitHub repo}. Thanks to Google Antigravity for helping to rigorously prove the Fourier and Random Variable constructions, and thanks to Codex for invaluable formatting, proofreading, and figure generation support.
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
