@@ -1,6 +1,7 @@
 # macOS and Python-generated files
 .DS_Store
 .venv/
+.venv/gitignore
 __pycache__/
 *.py[cod]
 
