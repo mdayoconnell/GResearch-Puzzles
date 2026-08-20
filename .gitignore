@@ -1,0 +1,15 @@
+# macOS and Python-generated files
+.DS_Store
+.venv/
+__pycache__/
+*.py[cod]
+
+/2026_B3_HareShare/*
+!/2026_B3_HareShare/src/
+
+/2026_B3_HareShare/src/sims/
+/2026_B3_HareShare/src/for_codex/
+
+/2026_B3_HareShare/src/tex_submission/*
+!/2026_B3_HareShare/src/tex_submission/HareShare.tex
+!/2026_B3_HareShare/src/tex_submission/HareShare.pdf
