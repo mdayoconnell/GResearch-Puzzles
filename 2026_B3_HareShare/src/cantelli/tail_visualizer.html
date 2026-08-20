@@ -1,0 +1,1906 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hare Share — Tail Regime &amp; Upper Bound Tuner</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [["\\(", "\\)"]] },
+      options: { skipHtmlTags: ["script", "noscript", "style", "textarea", "pre"] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f4f2ff;
+      --muted: #a6a1bd;
+      --faint: #716b89;
+      --paper: #0d0b13;
+      --panel: #17131f;
+      --panel-2: #201a2c;
+      --panel-3: #2a223a;
+      --line: #393047;
+      --line-light: #4f4363;
+      --acid: #d8ff63;
+      --acid-glow: rgba(216, 255, 99, 0.35);
+      --cyan: #62f5e7;
+      --cyan-glow: rgba(98, 245, 231, 0.35);
+      --violet: #8c63ff;
+      --violet-glow: rgba(140, 99, 255, 0.35);
+      --danger: #ff6f91;
+      --danger-glow: rgba(255, 111, 145, 0.45);
+      --orange: #ff9238;
+      --gold: #ffd166;
+      --gold-glow: rgba(255, 209, 102, 0.45);
+      --emerald: #4ef2bb;
+      --emerald-glow: rgba(78, 242, 187, 0.45);
+      --shadow: 0 24px 70px rgb(0 0 0 / 38%);
+      --card-shadow: 0 12px 32px rgb(0 0 0 / 28%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 0%, rgb(140 99 255 / 18%), transparent 30rem),
+        radial-gradient(circle at 86% 14%, rgb(98 245 231 / 10%), transparent 26rem),
+        radial-gradient(circle at 50% 65%, rgb(216 255 99 / 4%), transparent 35rem),
+        var(--paper);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    button,
+    select,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 2px;
+    }
+
+    .shell {
+      width: min(1580px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 60px;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 20px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .eyebrow {
+      color: var(--acid);
+      font: 700 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .eyebrow-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(216, 255, 99, 0.14);
+      border: 1px solid rgba(216, 255, 99, 0.3);
+      color: var(--acid);
+      font-size: 10px;
+    }
+
+    h1 {
+      font-size: clamp(24px, 3.2vw, 42px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -.04em;
+      background: linear-gradient(135deg, #ffffff 40%, var(--muted) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* NAV CONTROLLER */
+    .nav-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      background: var(--panel);
+      padding: 10px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      box-shadow: var(--card-shadow);
+    }
+
+    .stepper {
+      display: inline-flex;
+      align-items: center;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 2px;
+    }
+
+    .stepper-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-weight: 700;
+      transition: all .15s;
+    }
+
+    .stepper-btn:hover:not(:disabled) {
+      background: var(--line);
+      color: var(--ink);
+    }
+
+    .stepper-btn:disabled {
+      opacity: .3;
+      cursor: not-allowed;
+    }
+
+    .stepper-label {
+      padding: 0 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stepper-label select {
+      background: transparent;
+      border: none;
+      color: var(--acid);
+      font-weight: 800;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 6px;
+    }
+
+    .stepper-label select:hover {
+      background: var(--panel-3);
+    }
+
+    .btn-sweep {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      padding: 6px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s;
+    }
+
+    .btn-sweep:hover {
+      background: var(--acid);
+      color: #0d0b13;
+      border-color: var(--acid);
+    }
+
+    .btn-sweep.playing {
+      background: var(--acid);
+      color: #0d0b13;
+      box-shadow: 0 0 12px var(--acid-glow);
+    }
+
+    .kbd-pill {
+      font-size: 11px;
+      color: var(--faint);
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-family: ui-monospace, monospace;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .kbd {
+      background: var(--panel-3);
+      padding: 1px 4px;
+      border-radius: 4px;
+      border: 1px solid var(--line-light);
+      color: var(--muted);
+    }
+
+    /* TOP SUMMARY BANNER */
+    .summary-banner {
+      display: grid;
+      grid-template-columns: 1.4fr repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 1200px) {
+      .summary-banner {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .summary-banner {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .banner-hero {
+      background: linear-gradient(145deg, rgba(216, 255, 99, 0.12), rgba(23, 19, 31, 0.9));
+      border: 1px solid rgba(216, 255, 99, 0.35);
+      border-radius: 18px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .banner-hero-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tag-onset {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--acid);
+      color: #0b0f02;
+    }
+
+    .onset-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .onset-desc {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-card-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+    }
+
+    .stat-card-val {
+      font-size: 24px;
+      font-weight: 800;
+      font-family: ui-monospace, monospace;
+      color: var(--ink);
+      line-height: 1.1;
+    }
+
+    .stat-card-val.acid {
+      color: var(--acid);
+    }
+
+    .stat-card-val.cyan {
+      color: var(--cyan);
+    }
+
+    .stat-card-val.violet {
+      color: var(--violet);
+    }
+
+    .stat-card-val.gold {
+      color: var(--gold);
+    }
+
+    .stat-card-val.emerald {
+      color: var(--emerald);
+    }
+
+    .stat-card-sub {
+      font-size: 11px;
+      color: var(--faint);
+      font-family: ui-monospace, monospace;
+    }
+
+    /* MAIN WORKSPACE GRID */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1.8fr 1.2fr;
+      gap: 20px;
+      margin-bottom: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 1200px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-line {
+      width: 14px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .legend-line.max {
+      background: var(--acid);
+      box-shadow: 0 0 6px var(--acid-glow);
+    }
+
+    .legend-line.block {
+      background: var(--violet);
+    }
+
+    .legend-line.tail-ref {
+      background: var(--cyan);
+      border-top: 1px dashed var(--cyan);
+      height: 1px;
+    }
+
+    .legend-line.upper-bound {
+      background: var(--gold);
+      box-shadow: 0 0 8px var(--gold-glow);
+    }
+
+    /* SVG PLOT CONTAINER */
+    .plot-container {
+      width: 100%;
+      position: relative;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    #mainPlotSvg,
+    #slopePlotSvg,
+    #scalingPlotSvg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* TOOLTIP */
+    .plot-tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(13, 11, 19, 0.94);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--line-light);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 11px;
+      color: var(--ink);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      opacity: 0;
+      transition: opacity .12s ease;
+      z-index: 100;
+      white-space: nowrap;
+    }
+
+    /* ========================================================= */
+    /* DESMOS-STYLE UPPER BOUND TUNER CARD & SLIDERS */
+    /* ========================================================= */
+    .tuner-card {
+      background: linear-gradient(145deg, rgba(255, 209, 102, 0.1), rgba(23, 19, 31, 0.96));
+      border: 1px solid rgba(255, 209, 102, 0.4);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .tuner-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .tuner-badge {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--gold);
+      color: #0b0f02;
+    }
+
+    /* STATUS BANNER */
+    .validity-banner {
+      padding: 12px 14px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid transparent;
+      transition: all .25s ease;
+    }
+
+    .validity-banner.valid-global {
+      background: rgba(78, 242, 187, 0.14);
+      border-color: rgba(78, 242, 187, 0.4);
+      color: var(--emerald);
+    }
+
+    .validity-banner.valid-current {
+      background: rgba(255, 209, 102, 0.14);
+      border-color: rgba(255, 209, 102, 0.4);
+      color: var(--gold);
+    }
+
+    .validity-banner.invalid {
+      background: rgba(255, 111, 145, 0.16);
+      border-color: rgba(255, 111, 145, 0.45);
+      color: var(--danger);
+    }
+
+    .validity-text {
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .validity-stats {
+      font-size: 11px;
+      font-family: ui-monospace, monospace;
+      opacity: 0.9;
+    }
+
+    /* FORMULA INPUT */
+    .formula-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .formula-input-box {
+      width: 100%;
+      background: var(--panel-2);
+      border: 1px solid var(--line-light);
+      border-radius: 10px;
+      color: var(--gold);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 10px 12px;
+      resize: vertical;
+      min-height: 54px;
+    }
+
+    .formula-input-box:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 12px var(--gold-glow);
+    }
+
+    .select-styled {
+      background: var(--panel-2);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      width: 100%;
+    }
+
+    /* DESMOS SLIDERS CONTAINER */
+    .sliders-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .slider-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-family: ui-monospace, monospace;
+    }
+
+    .slider-name {
+      color: var(--gold);
+      font-weight: 800;
+    }
+
+    .slider-val-input {
+      background: var(--panel-3);
+      border: 1px solid var(--line-light);
+      color: var(--ink);
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      font-weight: 700;
+      width: 70px;
+      text-align: right;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .slider-track-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .slider-range-input {
+      flex: 1;
+      accent-color: var(--gold);
+      cursor: pointer;
+    }
+
+    .slider-bound-label {
+      font-size: 10px;
+      color: var(--faint);
+      font-family: ui-monospace, monospace;
+      width: 32px;
+    }
+
+    /* TUNER METRICS GRID */
+    .tuner-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .tuner-metric-box {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .tuner-metric-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .tuner-metric-val {
+      font-size: 16px;
+      font-weight: 800;
+      font-family: ui-monospace, monospace;
+      color: var(--ink);
+    }
+
+    .tuner-metric-val.emerald {
+      color: var(--emerald);
+    }
+
+    .tuner-metric-val.gold {
+      color: var(--gold);
+    }
+
+    .tuner-metric-val.danger {
+      color: var(--danger);
+    }
+
+    /* VIOLATION LOG */
+    .violation-log {
+      max-height: 80px;
+      overflow-y: auto;
+      background: rgba(255, 111, 145, 0.08);
+      border: 1px solid rgba(255, 111, 145, 0.25);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-family: ui-monospace, monospace;
+      color: var(--danger);
+      display: none;
+    }
+
+    /* TABLE SECTION */
+    .table-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .table-wrapper {
+      max-height: 420px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin-top: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    th,
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      background: var(--panel-3);
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: .08em;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    tbody tr {
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    tbody tr:hover {
+      background: var(--panel-2);
+    }
+
+    tbody tr.active-row {
+      background: rgba(216, 255, 99, 0.14);
+      border-left: 3px solid var(--acid);
+    }
+
+    tbody tr.active-row td {
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .badge-certified {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(216, 255, 99, 0.15);
+      border: 1px solid rgba(216, 255, 99, 0.3);
+      color: var(--acid);
+    }
+
+    .badge-heuristic {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(140, 99, 255, 0.15);
+      border: 1px solid rgba(140, 99, 255, 0.3);
+      color: var(--violet);
+    }
+
+    .theory-box {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .theory-box code {
+      color: var(--ink);
+      font-family: ui-monospace, monospace;
+      background: var(--panel-3);
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+
+    .theory-equation {
+      margin: 10px 0;
+      overflow-x: auto;
+      color: var(--ink);
+    }
+
+    .theory-note {
+      margin-top: 10px;
+      color: var(--cyan);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+    <!-- HEADER -->
+    <header>
+      <div class="title-group">
+        <div class="eyebrow">
+          <span>Hare Share Lab</span>
+          <span class="eyebrow-badge">Interactive Closed-Form Upper Bound Tuner</span>
+        </div>
+        <h1>F(p, t) vs. t &amp; Upper Bound Tuner</h1>
+      </div>
+
+      <!-- NAV CONTROLLER -->
+      <div class="nav-bar">
+        <div class="stepper">
+          <button class="stepper-btn" id="prevPrimeBtn" title="Previous Prime (ArrowLeft / ArrowDown)">&#x25C0;</button>
+          <div class="stepper-label">
+            <span>p =</span>
+            <select id="primeSelect"></select>
+          </div>
+          <button class="stepper-btn" id="nextPrimeBtn" title="Next Prime (ArrowRight / ArrowUp)">&#x25B6;</button>
+        </div>
+
+        <button class="btn-sweep" id="btnSweep" title="Automatically flip through primes">
+          <span id="sweepIcon">&#x25B6;</span>
+          <span id="sweepText">Auto-Sweep Primes</span>
+        </button>
+
+        <div class="kbd-pill">
+          <span class="kbd">&larr;&rarr;</span> change p
+          <span class="kbd">Space</span> play/pause sweep
+        </div>
+      </div>
+    </header>
+
+    <!-- TOP ONSET SUMMARY BANNER -->
+    <div class="summary-banner">
+      <!-- HERO CARD -->
+      <div class="banner-hero">
+        <div class="banner-hero-header">
+          <span class="tag-onset" id="onsetTag">TAIL REGIME</span>
+          <span style="font-size: 11px; font-family: ui-monospace, monospace; color: var(--acid);" id="onsetFormula">t
+            &ge; &lceil;q/2&rceil;</span>
+        </div>
+        <div class="onset-title" id="onsetTitle">Onset at t = 6 (q = 11)</div>
+        <div class="onset-desc" id="onsetDesc">
+          For all \(t \ge t_0\), \(F_{\max}(p, t) = 3q - 2t\), decreasing by exactly <strong>2 hares per
+            minute</strong>.
+        </div>
+      </div>
+
+      <!-- METRIC TILES -->
+      <div class="stat-card">
+        <span class="stat-card-label">Tree Stumps q</span>
+        <span class="stat-card-val" id="statQ">11</span>
+        <span class="stat-card-sub" id="statPrimeInfo">p = 23 (prime)</span>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-card-label">Peak F(p, 1)</span>
+        <span class="stat-card-val acid" id="statF1">121</span>
+        <span class="stat-card-sub">Exact \(q^2\) for all sets</span>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-card-label">Onset Value F(t<sub>0</sub>)</span>
+        <span class="stat-card-val cyan" id="statFOnset">21</span>
+        <span class="stat-card-sub" id="statFOnsetFormula">3(11) - 2(6) = 21</span>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-card-label">Max Island Advantage</span>
+        <span class="stat-card-val violet" id="statMaxGain">+26</span>
+        <span class="stat-card-sub" id="statMaxGainMinute">at minute t = 2</span>
+      </div>
+    </div>
+
+    <!-- MAIN WORKSPACE GRID -->
+    <div class="charts-grid">
+      <!-- LEFT: MAIN F(p, t) CURVE & SLOPE CHART -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>Survival Curve F(p, t) &amp; Custom Upper Bound U(p, t)</span>
+          </div>
+          <div class="legend-row">
+            <div class="legend-item"><span class="legend-line max"></span> F<sub>max</sub>(p, t) (Observed Max)</div>
+            <div class="legend-item"><span class="legend-line upper-bound"></span> U(p, t) (Your Upper Bound)</div>
+            <div class="legend-item"><span class="legend-line block"></span> F<sub>block</sub> (Interval)</div>
+            <div class="legend-item"><span class="legend-line tail-ref"></span> 3q - 2t (Linear Tail)</div>
+          </div>
+        </div>
+
+        <!-- MAIN PLOT -->
+        <div class="plot-container" id="mainPlotContainer">
+          <svg id="mainPlotSvg" viewBox="0 0 740 340"></svg>
+          <div class="plot-tooltip" id="plotTooltip"></div>
+        </div>
+
+        <!-- SLOPE / DERIVATIVE CHART -->
+        <div class="card-header" style="margin-top: 6px;">
+          <div class="card-title" style="font-size: 11px; color: var(--muted);">
+            <span>Step Drop &Delta;F(t) = F(t) &minus; F(t+1) (Locks onto 2 in Tail)</span>
+          </div>
+          <div style="font-size: 11px; color: var(--acid); font-family: ui-monospace, monospace;">
+            Tail Rule: &Delta;F = 2
+          </div>
+        </div>
+
+        <div class="plot-container" style="background: var(--panel-3); padding: 6px;">
+          <svg id="slopePlotSvg" viewBox="0 0 740 140"></svg>
+        </div>
+      </div>
+
+      <!-- RIGHT: DESMOS-STYLE CLOSED-FORM UPPER BOUND TUNER -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="tuner-card">
+          <div class="tuner-header">
+            <div class="card-title" style="color: var(--gold);">
+              <span>Desmos Upper Bound Tuner</span>
+            </div>
+            <span class="tuner-badge">DESMOS ENGINE</span>
+          </div>
+
+          <!-- VALIDITY STATUS BANNER -->
+          <div class="validity-banner valid-global" id="validityBanner">
+            <div class="validity-text" id="validityText">
+              <span>✓ VALID UPPER BOUND (GLOBAL)</span>
+            </div>
+            <div class="validity-stats" id="validityStats">
+              100% Valid (519/519 pts)
+            </div>
+          </div>
+
+          <!-- VIOLATION LOG -->
+          <div class="violation-log" id="violationLog"></div>
+
+          <!-- TEMPLATE PRESETS -->
+          <div class="formula-input-group">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="stat-card-label">Closed-Form Templates</span>
+              <span style="font-size: 10px; color: var(--faint);">Variables: <code>p, q, t, a, b, c, d</code></span>
+            </div>
+            <select class="select-styled" id="templateSelect">
+              <option value="theorem_piecewise">Five-Regime Theorem Bound: β scales m = 2; α scales Cantelli</option>
+              <option value="piecewise_power">Piecewise Power-Law Tail: t &lt; ⌈q/2⌉ ? (a·q²)/t^b + c : 3q - 2t</option>
+              <option value="max_envelope">Max Envelope Power Law: max((a·q²)/t^b, 3q - 2t)</option>
+              <option value="harmonic_rational">Harmonic Rational Blend: (a·q²)/(t + b) + c·(3q - 2t)</option>
+              <option value="roth_decay">Roth-Type Additive Decay: q²/(1 + a·(t-1)) + (3q - 2t)</option>
+              <option value="tail_linear">Pure Tail Line: 3q - 2t</option>
+              <option value="custom">Custom Formula (Edit below)</option>
+            </select>
+          </div>
+
+          <!-- FORMULA INPUT TEXTAREA -->
+          <div class="formula-input-group">
+            <span class="stat-card-label">Formula Expression U(p, q, t, a, b, c, d)</span>
+            <textarea class="formula-input-box" id="formulaInput" spellcheck="false"></textarea>
+          </div>
+
+          <!-- DESMOS PARAMETER SLIDERS -->
+          <div class="sliders-container">
+            <div
+              style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em;">
+              Tunable Parameters
+            </div>
+
+            <!-- SLIDER A -->
+            <div class="slider-row" id="sliderRowA">
+              <div class="slider-header">
+                <span class="slider-name" id="sliderNameA">a (Coefficient / Scale)</span>
+                <input type="number" class="slider-val-input" id="inputA" step="0.01" value="1.00">
+              </div>
+              <div class="slider-track-wrap">
+                <span class="slider-bound-label" id="minLabelA">0</span>
+                <input type="range" class="slider-range-input" id="sliderA" min="0" max="3" step="0.01" value="1.00">
+                <span class="slider-bound-label" id="maxLabelA">3</span>
+              </div>
+            </div>
+
+            <!-- SLIDER B -->
+            <div class="slider-row" id="sliderRowB">
+              <div class="slider-header">
+                <span class="slider-name" id="sliderNameB">b (Power / Decay Exponent)</span>
+                <input type="number" class="slider-val-input" id="inputB" step="0.01" value="1.35">
+              </div>
+              <div class="slider-track-wrap">
+                <span class="slider-bound-label" id="minLabelB">0</span>
+                <input type="range" class="slider-range-input" id="sliderB" min="0" max="3" step="0.01" value="1.35">
+                <span class="slider-bound-label" id="maxLabelB">3</span>
+              </div>
+            </div>
+
+            <!-- SLIDER C -->
+            <div class="slider-row" id="sliderRowC">
+              <div class="slider-header">
+                <span class="slider-name">c (Offset / Baseline Shift)</span>
+                <input type="number" class="slider-val-input" id="inputC" step="0.1" value="0.0">
+              </div>
+              <div class="slider-track-wrap">
+                <span class="slider-bound-label" id="minLabelC">0</span>
+                <input type="range" class="slider-range-input" id="sliderC" min="0" max="20" step="0.1" value="0.0">
+                <span class="slider-bound-label" id="maxLabelC">20</span>
+              </div>
+            </div>
+
+            <!-- SLIDER D -->
+            <div class="slider-row" id="sliderRowD" style="display: none;">
+              <div class="slider-header">
+                <span class="slider-name">d (Auxiliary Param)</span>
+                <input type="number" class="slider-val-input" id="inputD" step="0.1" value="0.0">
+              </div>
+              <div class="slider-track-wrap">
+                <span class="slider-bound-label" id="minLabelD">0</span>
+                <input type="range" class="slider-range-input" id="sliderD" min="0" max="10" step="0.1" value="0.0">
+                <span class="slider-bound-label" id="maxLabelD">10</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TIGHTNESS METRICS -->
+          <div class="tuner-metrics-grid">
+            <div class="tuner-metric-box">
+              <span class="tuner-metric-label">Mean Ratio U/F</span>
+              <span class="tuner-metric-val emerald" id="statMeanRatio">1.04x</span>
+            </div>
+            <div class="tuner-metric-box">
+              <span class="tuner-metric-label">Max Overestimate</span>
+              <span class="tuner-metric-val gold" id="statMaxRatio">1.18x</span>
+            </div>
+            <div class="tuner-metric-box">
+              <span class="tuner-metric-label">Peak Slack (t=1)</span>
+              <span class="tuner-metric-val" id="statSlackT1">+0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- THEORETICAL SUMMARY -->
+        <div class="card">
+          <div class="card-title" style="color: var(--acid);">
+            <span>Full Piecewise Upper Bound</span>
+          </div>
+          <div class="theory-box">
+            Let \(q=(p-1)/2\). The constant \(\beta\) scales the \(m=2\)
+            Fourier branch, while \(\alpha\) scales the nonexact Cantelli
+            branch. The complete candidate bound on integer times
+            \(1\le m\le p-1\) is
+            <div class="theory-equation">
+              \[
+              F(p,m)\le U_\alpha(p,m):=
+              \begin{cases}
+                q^2, &amp; m=1,\\[2pt]
+                \beta(0.205p^2), &amp; m=2,\\[4pt]
+                \displaystyle \alpha\!\left(q+\frac{(p-1)(p-m-1)}{m+2}\right),
+                  &amp; 3\le m&lt;\left\lceil q/2\right\rceil,\\[8pt]
+                3q-2m, &amp; \left\lceil q/2\right\rceil\le m&lt;q,\\[2pt]
+                q, &amp; q\le m\le p-1.
+              \end{cases}
+              \]
+            </div>
+            The first, fourth, and fifth branches are exact. The tuner tests
+            the second and third branches against the loaded maxima data.
+            <div class="theory-note">
+              The theorem preset lets \(0.461\le\alpha\le1\) and
+              \(0.687\le\beta\le1\). These lower endpoints are the current
+              100-prime smoke-test floors, not yet proofs for every prime.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CROSS-PRIME ONSET TABLE -->
+      <div class="table-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>Cross-Prime Tail Onset Table (p &in; [3, 449])</span>
+          </div>
+          <div style="font-size: 11px; color: var(--muted);">
+            Click any row to view its complete curve and test your upper bound.
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Prime p</th>
+                <th>q = (p-1)/2</th>
+                <th>Theoretical Onset &lceil;q/2&rceil;</th>
+                <th>Observed Tail Start</th>
+                <th>Tail Span</th>
+                <th>F(t<sub>0</sub>)</th>
+                <th>Bound Status U &ge; F</th>
+                <th>Certification</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATASET -->
+    <script src="maxima_data.js"></script>
+
+    <!-- APP SCRIPT -->
+    <script>
+      (() => {
+        "use strict";
+
+        const PRIMES = [...new Set(
+          Object.keys(window.HARE_SHARE_MAXIMA || {}).map(key => Number(key.split(",")[0]))
+        )].sort((a, b) => a - b);
+
+        const TEMPLATES = {
+          theorem_piecewise: {
+            code: "t === 1 ? q * q : t === 2 ? b * 0.205 * p * p : t < Math.ceil(q/2) ? a * (q + ((p - 1) * (p - t - 1)) / (t + 2)) : t < q ? 3 * q - 2 * t : q",
+            a: 1.0, aMin: 0.461, aMax: 1.0, aStep: 0.001,
+            aLabel: "α (Cantelli scale)",
+            b: 1.0, bMin: 0.687, bMax: 1.0, bStep: 0.001,
+            bLabel: "β (m = 2 Fourier scale)",
+            c: 0.0, cMin: 0.0, cMax: 1.0, cStep: 0.01,
+            showB: true,
+            showC: false,
+            showD: false,
+          },
+          piecewise_power: {
+            code: "t < Math.ceil(q/2) ? (a * q * q) / Math.pow(t, b) + c : 3 * q - 2 * t",
+            a: 1.0, aMin: 0.5, aMax: 2.0, aStep: 0.01,
+            b: 1.25, bMin: 0.5, bMax: 2.5, bStep: 0.01,
+            c: 0.0, cMin: 0, cMax: 20, cStep: 0.5,
+            showD: false,
+          },
+          max_envelope: {
+            code: "Math.max((a * q * q) / Math.pow(t, b), 3 * q - 2 * t)",
+            a: 1.0, aMin: 0.5, aMax: 2.0, aStep: 0.01,
+            b: 1.20, bMin: 0.5, bMax: 2.5, bStep: 0.01,
+            c: 0.0, cMin: 0, cMax: 10, cStep: 0.1,
+            showD: false,
+          },
+          harmonic_rational: {
+            code: "(a * q * q) / (t + b) + c * (3 * q - 2 * t)",
+            a: 1.0, aMin: 0.1, aMax: 2.0, aStep: 0.01,
+            b: 0.5, bMin: 0.0, bMax: 5.0, bStep: 0.05,
+            c: 0.8, cMin: 0.0, cMax: 2.0, cStep: 0.05,
+            showD: false,
+          },
+          roth_decay: {
+            code: "(q * q) / (1 + a * (t - 1)) + (3 * q - 2 * t)",
+            a: 0.85, aMin: 0.1, aMax: 3.0, aStep: 0.01,
+            b: 0.0, bMin: 0.0, bMax: 5.0, bStep: 0.1,
+            c: 0.0, cMin: 0.0, cMax: 10.0, cStep: 0.1,
+            showD: false,
+          },
+          tail_linear: {
+            code: "3 * q - 2 * t",
+            a: 3.0, aMin: 0, aMax: 5, aStep: 0.1,
+            b: 2.0, bMin: 0, bMax: 5, bStep: 0.1,
+            c: 0.0, cMin: 0, cMax: 10, cStep: 0.1,
+            showD: false,
+          },
+          custom: {
+            code: "t < Math.ceil(q/2) ? (a * q * q) / Math.pow(t, b) + c : 3 * q - 2 * t",
+            a: 1.0, aMin: 0, aMax: 5, aStep: 0.01,
+            b: 1.25, bMin: 0, bMax: 3, bStep: 0.01,
+            c: 0.0, cMin: 0, cMax: 20, cStep: 0.1,
+            showD: true, d: 0.0, dMin: 0, dMax: 10, dStep: 0.1,
+          }
+        };
+
+        const state = {
+          p: 23,
+          hoveredT: null,
+          isSweeping: false,
+          sweepTimer: null,
+          selectedTemplate: "theorem_piecewise",
+          formulaCode: TEMPLATES.theorem_piecewise.code,
+          a: TEMPLATES.theorem_piecewise.a,
+          b: TEMPLATES.theorem_piecewise.b,
+          c: TEMPLATES.theorem_piecewise.c,
+          d: 0.0,
+        };
+
+        const el = {
+          primeSelect: document.querySelector("#primeSelect"),
+          prevPrimeBtn: document.querySelector("#prevPrimeBtn"),
+          nextPrimeBtn: document.querySelector("#nextPrimeBtn"),
+          btnSweep: document.querySelector("#btnSweep"),
+          sweepIcon: document.querySelector("#sweepIcon"),
+          sweepText: document.querySelector("#sweepText"),
+          onsetTag: document.querySelector("#onsetTag"),
+          onsetFormula: document.querySelector("#onsetFormula"),
+          onsetTitle: document.querySelector("#onsetTitle"),
+          onsetDesc: document.querySelector("#onsetDesc"),
+          statQ: document.querySelector("#statQ"),
+          statPrimeInfo: document.querySelector("#statPrimeInfo"),
+          statF1: document.querySelector("#statF1"),
+          statFOnset: document.querySelector("#statFOnset"),
+          statFOnsetFormula: document.querySelector("#statFOnsetFormula"),
+          statMaxGain: document.querySelector("#statMaxGain"),
+          statMaxGainMinute: document.querySelector("#statMaxGainMinute"),
+          mainPlotSvg: document.querySelector("#mainPlotSvg"),
+          slopePlotSvg: document.querySelector("#slopePlotSvg"),
+          plotTooltip: document.querySelector("#plotTooltip"),
+          mainPlotContainer: document.querySelector("#mainPlotContainer"),
+          tableBody: document.querySelector("#tableBody"),
+          templateSelect: document.querySelector("#templateSelect"),
+          formulaInput: document.querySelector("#formulaInput"),
+          validityBanner: document.querySelector("#validityBanner"),
+          validityText: document.querySelector("#validityText"),
+          validityStats: document.querySelector("#validityStats"),
+          violationLog: document.querySelector("#violationLog"),
+          statMeanRatio: document.querySelector("#statMeanRatio"),
+          statMaxRatio: document.querySelector("#statMaxRatio"),
+          statSlackT1: document.querySelector("#statSlackT1"),
+          inputA: document.querySelector("#inputA"),
+          sliderA: document.querySelector("#sliderA"),
+          minLabelA: document.querySelector("#minLabelA"),
+          maxLabelA: document.querySelector("#maxLabelA"),
+          sliderNameA: document.querySelector("#sliderNameA"),
+          sliderRowB: document.querySelector("#sliderRowB"),
+          sliderNameB: document.querySelector("#sliderNameB"),
+          inputB: document.querySelector("#inputB"),
+          sliderB: document.querySelector("#sliderB"),
+          minLabelB: document.querySelector("#minLabelB"),
+          maxLabelB: document.querySelector("#maxLabelB"),
+          sliderRowC: document.querySelector("#sliderRowC"),
+          inputC: document.querySelector("#inputC"),
+          sliderC: document.querySelector("#sliderC"),
+          minLabelC: document.querySelector("#minLabelC"),
+          maxLabelC: document.querySelector("#maxLabelC"),
+          sliderRowD: document.querySelector("#sliderRowD"),
+          inputD: document.querySelector("#inputD"),
+          sliderD: document.querySelector("#sliderD"),
+          minLabelD: document.querySelector("#minLabelD"),
+          maxLabelD: document.querySelector("#maxLabelD"),
+        };
+
+        // Math helpers
+        const getQ = (p = state.p) => (p - 1) / 2;
+        const getTheoreticalOnset = (p = state.p) => Math.ceil(getQ(p) / 2);
+
+        const blockCurveCache = new Map();
+        const curveDataCache = new Map();
+
+        function computeBlockCurve(p) {
+          if (blockCurveCache.has(p)) return blockCurveCache.get(p);
+          const q = getQ(p);
+          const curve = Array(q + 1).fill(q);
+          curve[0] = p * q;
+          for (let a = 1; a < p; a++) {
+            const sequence = Array.from(
+              { length: p },
+              (_, step) => ((step * a) % p) < q
+            );
+            const hole = sequence.indexOf(false);
+            let run = 0;
+            for (let offset = 1; offset <= p; offset++) {
+              if (sequence[(hole + offset) % p]) {
+                run++;
+              } else if (run) {
+                for (let t = 1; t < run; t++) {
+                  curve[t] += run - t;
+                }
+                run = 0;
+              }
+            }
+          }
+          blockCurveCache.set(p, curve);
+          return curve;
+        }
+
+        function computeBlockSurvival(p, t) {
+          return computeBlockCurve(p)[t];
+        }
+
+        function getCurveData(p) {
+          if (curveDataCache.has(p)) return curveDataCache.get(p);
+          const q = getQ(p);
+          const points = [];
+          let maxGain = 0;
+          let maxGainT = 1;
+
+          for (let t = 1; t <= q; t++) {
+            const key = `${p},${t}`;
+            let fMax = 3 * q - 2 * t;
+            let proven = true;
+            let method = "analytic";
+
+            if (window.HARE_SHARE_MAXIMA && window.HARE_SHARE_MAXIMA[key]) {
+              const row = window.HARE_SHARE_MAXIMA[key];
+              fMax = row.value;
+              proven = row.proven;
+              method = row.method;
+            }
+
+            const fBlock = computeBlockSurvival(p, t);
+            const fTailRef = 3 * q - 2 * t;
+            const gain = fMax - fBlock;
+            if (gain > maxGain) {
+              maxGain = gain;
+              maxGainT = t;
+            }
+
+            points.push({
+              t,
+              fMax,
+              fBlock,
+              fTailRef,
+              gain,
+              proven,
+              method,
+            });
+          }
+
+          // Detect observed tail start
+          let obsTailStart = q;
+          for (let t = 1; t <= q; t++) {
+            let allMatch = true;
+            for (let s = t; s <= q; s++) {
+              if (points[s - 1].fMax !== points[s - 1].fTailRef) {
+                allMatch = false;
+                break;
+              }
+            }
+            if (allMatch) {
+              obsTailStart = t;
+              break;
+            }
+          }
+
+          const data = {
+            p,
+            q,
+            t0: getTheoreticalOnset(p),
+            obsTailStart,
+            points,
+            maxGain,
+            maxGainT,
+          };
+          curveDataCache.set(p, data);
+          return data;
+        }
+
+        // ==========================================
+        // EVALUATOR FOR USER'S CUSTOM UPPER BOUND
+        // ==========================================
+        function evalUserUpperBound(p, q, t, a, b, c, d) {
+          try {
+            const fn = new Function('p', 'q', 't', 'a', 'b', 'c', 'd', 'Math', `return (${state.formulaCode});`);
+            const val = fn(p, q, t, a, b, c, d, Math);
+            return (typeof val === 'number' && !isNaN(val)) ? val : 0;
+          } catch (err) {
+            return 0;
+          }
+        }
+
+        // Global Upper Bound Validity & Violation Checker
+        function testUpperBoundValidity() {
+          let totalPts = 0;
+          let validPts = 0;
+          let currentValid = true;
+          const violations = [];
+
+          let currentRatioSum = 0;
+          let maxRatio = 0;
+
+          const curQ = getQ(state.p);
+          const curCurve = getCurveData(state.p);
+
+          PRIMES.forEach((p) => {
+            const q = getQ(p);
+            const curve = getCurveData(p);
+            curve.points.forEach((pt) => {
+              totalPts++;
+              const uVal = evalUserUpperBound(p, q, pt.t, state.a, state.b, state.c, state.d);
+              const ratio = pt.fMax > 0 ? uVal / pt.fMax : 1.0;
+
+              if (p === state.p) {
+                currentRatioSum += ratio;
+                if (ratio > maxRatio) maxRatio = ratio;
+              }
+
+              if (uVal >= pt.fMax - 1e-4) {
+                validPts++;
+              } else {
+                violations.push({ p, t: pt.t, fMax: pt.fMax, uVal, deficit: pt.fMax - uVal });
+                if (p === state.p) currentValid = false;
+              }
+            });
+          });
+
+          const meanRatio = curCurve.points.length > 0 ? currentRatioSum / curCurve.points.length : 1;
+          const slackT1 = evalUserUpperBound(state.p, curQ, 1, state.a, state.b, state.c, state.d) - (curQ * curQ);
+
+          return {
+            totalPts,
+            validPts,
+            isGlobalValid: violations.length === 0,
+            currentValid,
+            violations,
+            meanRatio,
+            maxRatio,
+            slackT1,
+          };
+        }
+
+        function populatePrimeSelect() {
+          el.primeSelect.innerHTML = "";
+          for (const p of PRIMES) {
+            const opt = document.createElement("option");
+            opt.value = p;
+            opt.textContent = p;
+            if (p === state.p) opt.selected = true;
+            el.primeSelect.appendChild(opt);
+          }
+        }
+
+        // Render Main Plot with Custom Upper Bound Envelope
+        function renderMainPlot(validity) {
+          const data = getCurveData(state.p);
+          const q = data.q;
+          const pts = data.points;
+          const t0 = data.t0;
+
+          const W = 740;
+          const H = 340;
+          const padL = 60;
+          const padR = 30;
+          const padT = 30;
+          const padB = 45;
+
+          const plotW = W - padL - padR;
+          const plotH = H - padT - padB;
+
+          const maxF = pts[0].fMax;
+          const minF = 0;
+
+          const scaleX = (t) => padL + ((t - 1) / Math.max(q - 1, 1)) * plotW;
+          const scaleY = (f) => padT + plotH - ((f - minF) / Math.max(maxF - minF, 1)) * plotH;
+
+          let svg = "";
+
+          // 1. Regime Shading
+          const splitX = scaleX(t0);
+
+          // Pre-tail zone
+          svg += `<rect x="${padL}" y="${padT}" width="${Math.max(splitX - padL, 0)}" height="${plotH}" fill="rgba(98, 245, 231, 0.04)" />`;
+          // Tail zone
+          svg += `<rect x="${splitX}" y="${padT}" width="${Math.max(W - padR - splitX, 0)}" height="${plotH}" fill="rgba(216, 255, 99, 0.07)" />`;
+
+          // Regime text labels
+          svg += `<text x="${padL + 8}" y="${padT + 18}" fill="var(--cyan)" font-size="10" font-weight="700" opacity="0.8">ISLAND / NON-LINEAR ZONE (t < t₀)</text>`;
+          svg += `<text x="${splitX + 8}" y="${padT + 18}" fill="var(--acid)" font-size="10" font-weight="700" opacity="0.85">LINEAR TAIL ZONE: 3q - 2t (SLOPE = -2)</text>`;
+
+          // Grid lines
+          for (let i = 0; i <= 5; i++) {
+            const valY = Math.round((maxF / 5) * i);
+            const y = scaleY(valY);
+            svg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>`;
+            svg += `<text x="${padL - 10}" y="${y + 4}" fill="var(--muted)" font-size="10" text-anchor="end" font-family="ui-monospace, monospace">${valY}</text>`;
+          }
+
+          // Onset vertical marker
+          svg += `<line x1="${splitX}" y1="${padT}" x2="${splitX}" y2="${H - padB}" stroke="var(--acid)" stroke-width="2" stroke-dasharray="4 3" opacity="0.85" />`;
+          svg += `<circle cx="${splitX}" cy="${scaleY(pts[t0 - 1].fMax)}" r="6" fill="var(--acid)" filter="drop-shadow(0 0 6px var(--acid))" />`;
+
+          // Dotted Tail Reference Line across all t
+          let tailPath = `M ${scaleX(1)} ${scaleY(3 * q - 2 * 1)}`;
+          for (let t = 2; t <= q; t++) {
+            tailPath += ` L ${scaleX(t)} ${scaleY(3 * q - 2 * t)}`;
+          }
+          svg += `<path d="${tailPath}" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.6" />`;
+
+          // Block Line (Dashed Violet)
+          let blockPath = `M ${scaleX(1)} ${scaleY(pts[0].fBlock)}`;
+          for (let t = 2; t <= q; t++) {
+            blockPath += ` L ${scaleX(t)} ${scaleY(pts[t - 1].fBlock)}`;
+          }
+          svg += `<path d="${blockPath}" fill="none" stroke="var(--violet)" stroke-width="2" stroke-dasharray="5 4" opacity="0.85" />`;
+
+          // ========================================================
+          // 2. USER'S CUSTOM UPPER BOUND CURVE U(p, t) (Gold/Emerald)
+          // ========================================================
+          const useIntegerTimes = state.selectedTemplate === "theorem_piecewise";
+          const steps = useIntegerTimes ? Math.max(q - 1, 0) : Math.max(q * 4, 100);
+          let uPath = "";
+          for (let i = 0; i <= steps; i++) {
+            const curT = useIntegerTimes ? 1 + i : 1 + (i / steps) * (q - 1);
+            const valU = evalUserUpperBound(state.p, q, curT, state.a, state.b, state.c, state.d);
+            const px = scaleX(curT);
+            const py = scaleY(Math.max(0, Math.min(valU, maxF * 1.6)));
+            if (i === 0) uPath += `M ${px} ${py}`;
+            else uPath += ` L ${px} ${py}`;
+          }
+          svg += `<path d="${uPath}" fill="none" stroke="var(--gold)" stroke-width="3.5" filter="drop-shadow(0 0 8px var(--gold-glow))" opacity="0.95" />`;
+
+          // 3. Observed Max Line (Solid Acid Green)
+          let maxPath = `M ${scaleX(1)} ${scaleY(pts[0].fMax)}`;
+          for (let t = 2; t <= q; t++) {
+            maxPath += ` L ${scaleX(t)} ${scaleY(pts[t - 1].fMax)}`;
+          }
+          svg += `<path d="${maxPath}" fill="none" stroke="var(--acid)" stroke-width="3" filter="drop-shadow(0 0 4px var(--acid-glow))" />`;
+
+          // 4. Interactive Points & Violation Beacons
+          const currentViolations = new Set(validity.violations.filter(v => v.p === state.p).map(v => v.t));
+
+          pts.forEach((pt) => {
+            const cx = scaleX(pt.t);
+            const cy = scaleY(pt.fMax);
+            const isOnset = pt.t === t0;
+            const isTail = pt.t >= t0;
+            const isViolated = currentViolations.has(pt.t);
+
+            // Red violation beacon ring
+            if (isViolated) {
+              svg += `<circle cx="${cx}" cy="${cy}" r="11" fill="none" stroke="var(--danger)" stroke-width="2.5" filter="drop-shadow(0 0 8px var(--danger-glow))" />`;
+            }
+
+            svg += `
+            <g class="plot-pt" data-t="${pt.t}" data-fmax="${pt.fMax}" data-fblock="${pt.fBlock}" data-cx="${cx}" data-cy="${cy}">
+              <circle cx="${cx}" cy="${cy}" r="${isOnset ? 6 : (q > 30 ? 3.5 : 5)}" fill="${isViolated ? 'var(--danger)' : (isTail ? 'var(--acid)' : 'var(--cyan)')}" stroke="#0d0b13" stroke-width="1.5" cursor="pointer" />
+            </g>
+          `;
+
+            // X Axis ticks
+            if (q <= 20 || pt.t % 5 === 0 || pt.t === 1 || pt.t === q || pt.t === t0) {
+              svg += `<text x="${cx}" y="${H - padB + 16}" fill="${isOnset ? 'var(--acid)' : 'var(--muted)'}" font-weight="${isOnset ? '800' : '500'}" font-size="10" text-anchor="middle" font-family="ui-monospace, monospace">${pt.t}</text>`;
+            }
+          });
+
+          // X Axis Title
+          svg += `<text x="${W / 2}" y="${H - 8}" fill="var(--ink)" font-size="11" font-weight="700" text-anchor="middle">Minutes / Jump Length t</text>`;
+          svg += `<text x="${padL - 40}" y="${padT - 10}" fill="var(--ink)" font-size="11" font-weight="700">F(p, t)</text>`;
+
+          el.mainPlotSvg.innerHTML = svg;
+
+          // Tooltip interaction
+          el.mainPlotSvg.querySelectorAll(".plot-pt").forEach((group) => {
+            group.addEventListener("mouseenter", (e) => {
+              const t = parseInt(group.getAttribute("data-t"), 10);
+              const pt = pts[t - 1];
+              const nextPt = pts[t];
+              const drop = nextPt ? pt.fMax - nextPt.fMax : 2;
+              const cx = parseFloat(group.getAttribute("data-cx"));
+              const cy = parseFloat(group.getAttribute("data-cy"));
+
+              const uVal = evalUserUpperBound(state.p, q, t, state.a, state.b, state.c, state.d);
+              const slack = uVal - pt.fMax;
+              const ratio = pt.fMax > 0 ? (uVal / pt.fMax).toFixed(3) : "1.000";
+
+              showTooltip(`
+              <strong>Minute t = ${t}</strong> ${t >= t0 ? '<span style="color:var(--acid);">(Tail Regime)</span>' : '<span style="color:var(--cyan);">(Island Regime)</span>'}<br>
+              • F<sub>max</sub>(p, t): <strong>${pt.fMax}</strong><br>
+              • Upper Bound U(p, t): <strong style="color:var(--gold);">${uVal.toFixed(1)}</strong> (${ratio}x)<br>
+              • Slack (U &minus; F): <strong style="color:${slack >= 0 ? 'var(--emerald)' : 'var(--danger)'};">${slack >= 0 ? '+' : ''}${slack.toFixed(1)}</strong><br>
+              • F<sub>block</sub>: ${pt.fBlock}<br>
+              • Step Drop &Delta;F(t &rarr; t+1): <strong style="color:var(--cyan);">${t < q ? drop : '—'}</strong>
+            `, cx, cy);
+            });
+            group.addEventListener("mouseleave", hideTooltip);
+          });
+        }
+
+        // Render Step Drop / Derivative Chart
+        function renderSlopePlot() {
+          const data = getCurveData(state.p);
+          const q = data.q;
+          const pts = data.points;
+
+          const W = 740;
+          const H = 140;
+          const padL = 60;
+          const padR = 30;
+          const padT = 15;
+          const padB = 30;
+
+          const plotW = W - padL - padR;
+          const plotH = H - padT - padB;
+
+          const drops = [];
+          let maxDrop = 4;
+          for (let t = 1; t < q; t++) {
+            const drop = pts[t - 1].fMax - pts[t].fMax;
+            drops.push({ t, drop });
+            if (drop > maxDrop) maxDrop = drop;
+          }
+
+          const scaleX = (t) => padL + ((t - 1) / Math.max(q - 1, 1)) * plotW;
+          const scaleY = (d) => padT + plotH - (d / maxDrop) * plotH;
+
+          let svg = "";
+
+          // Guide line at drop = 2
+          const y2 = scaleY(2);
+          svg += `<line x1="${padL}" y1="${y2}" x2="${W - padR}" y2="${y2}" stroke="var(--acid)" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.9" />`;
+          svg += `<text x="${W - padR + 6}" y="${y2 + 4}" fill="var(--acid)" font-size="9" font-family="ui-monospace, monospace" font-weight="700">&Delta;F = 2</text>`;
+
+          // Vertical onset line
+          const splitX = scaleX(data.t0);
+          svg += `<line x1="${splitX}" y1="${padT}" x2="${splitX}" y2="${H - padB}" stroke="var(--acid)" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.6" />`;
+
+          // Bars / Stems
+          drops.forEach((item) => {
+            const x = scaleX(item.t);
+            const y = scaleY(item.drop);
+            const isTail = item.t >= data.t0;
+
+            svg += `
+            <line x1="${x}" y1="${scaleY(0)}" x2="${x}" y2="${y}" stroke="${isTail ? 'var(--acid)' : 'var(--cyan)'}" stroke-width="${q > 30 ? 2 : 4}" stroke-linecap="round" />
+            <circle cx="${x}" cy="${y}" r="${q > 30 ? 2.5 : 4}" fill="${isTail ? 'var(--acid)' : 'var(--cyan)'}" />
+            ${q <= 20 ? `<text x="${x}" y="${y - 6}" fill="var(--ink)" font-size="9" text-anchor="middle" font-family="ui-monospace, monospace">${item.drop}</text>` : ''}
+          `;
+          });
+
+          // X Axis labels
+          svg += `<text x="${padL - 10}" y="${y2 + 3}" fill="var(--acid)" font-size="10" text-anchor="end" font-family="ui-monospace, monospace">2</text>`;
+          svg += `<text x="${padL - 10}" y="${scaleY(0) + 3}" fill="var(--muted)" font-size="10" text-anchor="end" font-family="ui-monospace, monospace">0</text>`;
+
+          el.slopePlotSvg.innerHTML = svg;
+        }
+
+        // Render Cross-Prime Table with Bound Status
+        function renderTable(validity) {
+          el.tableBody.innerHTML = "";
+          const violatingPrimes = new Set(validity.violations.map(v => v.p));
+
+          PRIMES.forEach((p) => {
+            const data = getCurveData(p);
+            const tr = document.createElement("tr");
+            if (p === state.p) tr.classList.add("active-row");
+
+            const fOnset = data.points[data.t0 - 1].fMax;
+            const tailSpan = data.q - data.t0 + 1;
+            const proven = data.points[data.t0 - 1].proven;
+            const isViolated = violatingPrimes.has(p);
+
+            tr.innerHTML = `
+            <td><strong>${p}</strong></td>
+            <td>${data.q}</td>
+            <td><strong style="color:var(--acid);">t &ge; ${data.t0}</strong></td>
+            <td>${data.obsTailStart}</td>
+            <td>${tailSpan} min</td>
+            <td>${fOnset}</td>
+            <td><span style="color:${isViolated ? 'var(--danger)' : 'var(--emerald)'}; font-weight:800;">${isViolated ? '✗ VIOLATED' : '✓ VALID'}</span></td>
+            <td><span class="${proven ? 'badge-certified' : 'badge-heuristic'}">${proven ? 'CERTIFIED' : 'HEURISTIC'}</span></td>
+          `;
+
+            tr.addEventListener("click", () => setPrime(p));
+            el.tableBody.appendChild(tr);
+          });
+        }
+
+        // Update Summary Cards & Tuner Status
+        function updateSummary(validity) {
+          const data = getCurveData(state.p);
+          const q = data.q;
+          const t0 = data.t0;
+
+          el.onsetTitle.textContent = `Tail Onset at t₀ = ${t0} (q = ${q})`;
+          el.onsetFormula.textContent = `t₀ = ⌈${q}/2⌉ = ${t0}`;
+          el.onsetDesc.innerHTML = `For all \\(t \\ge ${t0}\\), \\(F_{\\max}(p, t) = 3(${q}) - 2t = ${3 * q} - 2t\\), decreasing by exactly <strong>2 hares per minute</strong>.`;
+
+          el.statQ.textContent = q;
+          el.statPrimeInfo.textContent = `p = ${state.p} (prime)`;
+          el.statF1.textContent = q * q;
+          el.statFOnset.textContent = 3 * q - 2 * t0;
+          el.statFOnsetFormula.textContent = `3(${q}) - 2(${t0}) = ${3 * q - 2 * t0}`;
+          el.statMaxGain.textContent = `+${data.maxGain}`;
+          el.statMaxGainMinute.textContent = `at minute t = ${data.maxGainT}`;
+
+          // Update Tuner UI
+          if (validity.isGlobalValid) {
+            el.validityBanner.className = "validity-banner valid-global";
+            el.validityText.innerHTML = "<span>✓ GLOBAL UPPER BOUND VERIFIED</span>";
+            el.validityStats.textContent = `100% Valid (${validity.validPts}/${validity.totalPts} points across all ${PRIMES.length} primes)`;
+            el.violationLog.style.display = "none";
+          } else if (validity.currentValid) {
+            el.validityBanner.className = "validity-banner valid-current";
+            el.validityText.innerHTML = "<span>⚠ VALID FOR CURRENT PRIME ONLY</span>";
+            el.validityStats.textContent = `Fails on ${validity.violations.length} points across other primes`;
+            showViolationLog(validity.violations);
+          } else {
+            el.validityBanner.className = "validity-banner invalid";
+            el.validityText.innerHTML = "<span>✗ UPPER BOUND VIOLATION</span>";
+            el.validityStats.textContent = `${validity.violations.length} points violate U(p, t) < F_max`;
+            showViolationLog(validity.violations);
+          }
+
+          el.statMeanRatio.textContent = `${validity.meanRatio.toFixed(2)}x`;
+          el.statMaxRatio.textContent = `${validity.maxRatio.toFixed(2)}x`;
+          el.statSlackT1.textContent = `${validity.slackT1 >= 0 ? '+' : ''}${validity.slackT1.toFixed(1)}`;
+          el.statSlackT1.style.color = validity.slackT1 >= 0 ? "var(--ink)" : "var(--danger)";
+
+          if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise([el.onsetDesc]);
+          }
+        }
+
+        function showViolationLog(violations) {
+          el.violationLog.style.display = "block";
+          const top5 = violations.slice(0, 6);
+          el.violationLog.innerHTML = `<strong>Violations (${violations.length}):</strong> ` +
+            top5.map(v => `(p=${v.p}, t=${v.t}: F=${v.fMax}, U=${v.uVal.toFixed(1)})`).join(", ") +
+            (violations.length > 6 ? ` ... +${violations.length - 6} more` : "");
+        }
+
+        function updateAll() {
+          const validity = testUpperBoundValidity();
+          updateSummary(validity);
+          renderMainPlot(validity);
+          renderSlopePlot();
+          renderTable(validity);
+        }
+
+        // Tooltip helpers
+        function showTooltip(html, x, y) {
+          el.plotTooltip.innerHTML = html;
+          el.plotTooltip.style.left = `${x}px`;
+          el.plotTooltip.style.top = `${y - 15}px`;
+          el.plotTooltip.style.transform = `translate(-50%, -100%)`;
+          el.plotTooltip.style.opacity = "1";
+        }
+
+        function hideTooltip() {
+          el.plotTooltip.style.opacity = "0";
+        }
+
+        function setPrime(newP) {
+          if (!PRIMES.includes(newP)) return;
+          state.p = newP;
+          el.primeSelect.value = state.p;
+          updateAll();
+        }
+
+        function toggleSweep() {
+          if (state.isSweeping) {
+            clearInterval(state.sweepTimer);
+            state.isSweeping = false;
+            el.btnSweep.classList.remove("playing");
+            el.sweepIcon.innerHTML = "&#x25B6;";
+            el.sweepText.textContent = "Auto-Sweep Primes";
+          } else {
+            state.isSweeping = true;
+            el.btnSweep.classList.add("playing");
+            el.sweepIcon.innerHTML = "&#x23F8;";
+            el.sweepText.textContent = "Pause Sweep";
+
+            state.sweepTimer = setInterval(() => {
+              const idx = PRIMES.indexOf(state.p);
+              const nextIdx = (idx + 1) % PRIMES.length;
+              setPrime(PRIMES[nextIdx]);
+            }, 1200);
+          }
+        }
+
+        function loadTemplate(tplKey) {
+          state.selectedTemplate = tplKey;
+          const tpl = TEMPLATES[tplKey];
+          state.formulaCode = tpl.code;
+          el.formulaInput.value = tpl.code;
+
+          state.a = tpl.a;
+          el.sliderA.min = tpl.aMin; el.sliderA.max = tpl.aMax; el.sliderA.step = tpl.aStep;
+          el.inputA.step = tpl.aStep;
+          el.sliderA.value = tpl.a; el.inputA.value = tpl.a;
+          el.minLabelA.textContent = tpl.aMin; el.maxLabelA.textContent = tpl.aMax;
+          el.sliderNameA.textContent = tpl.aLabel || "a (Coefficient / Scale)";
+
+          state.b = tpl.b;
+          el.sliderB.min = tpl.bMin; el.sliderB.max = tpl.bMax; el.sliderB.step = tpl.bStep;
+          el.inputB.step = tpl.bStep;
+          el.sliderB.value = tpl.b; el.inputB.value = tpl.b;
+          el.minLabelB.textContent = tpl.bMin; el.maxLabelB.textContent = tpl.bMax;
+          el.sliderNameB.textContent = tpl.bLabel || "b (Power / Decay Exponent)";
+          el.sliderRowB.style.display = tpl.showB === false ? "none" : "flex";
+
+          state.c = tpl.c;
+          el.sliderC.min = tpl.cMin; el.sliderC.max = tpl.cMax; el.sliderC.step = tpl.cStep;
+          el.inputC.step = tpl.cStep;
+          el.sliderC.value = tpl.c; el.inputC.value = tpl.c;
+          el.minLabelC.textContent = tpl.cMin; el.maxLabelC.textContent = tpl.cMax;
+          el.sliderRowC.style.display = tpl.showC === false ? "none" : "flex";
+
+          if (tpl.showD) {
+            el.sliderRowD.style.display = "flex";
+            state.d = tpl.d || 0;
+            el.sliderD.value = state.d; el.inputD.value = state.d;
+          } else {
+            el.sliderRowD.style.display = "none";
+          }
+
+          updateAll();
+        }
+
+        function setupEvents() {
+          el.primeSelect.addEventListener("change", (e) => setPrime(parseInt(e.target.value, 10)));
+          el.prevPrimeBtn.addEventListener("click", () => {
+            const idx = PRIMES.indexOf(state.p);
+            if (idx > 0) setPrime(PRIMES[idx - 1]);
+          });
+          el.nextPrimeBtn.addEventListener("click", () => {
+            const idx = PRIMES.indexOf(state.p);
+            if (idx < PRIMES.length - 1) setPrime(PRIMES[idx + 1]);
+          });
+          el.btnSweep.addEventListener("click", toggleSweep);
+
+          // Template Selection
+          el.templateSelect.addEventListener("change", (e) => loadTemplate(e.target.value));
+
+          // Formula Input
+          el.formulaInput.addEventListener("input", (e) => {
+            state.formulaCode = e.target.value;
+            updateAll();
+          });
+
+          // Sliders & Inputs
+          const bindSlider = (slider, input, paramName) => {
+            slider.addEventListener("input", (e) => {
+              const val = parseFloat(e.target.value);
+              state[paramName] = val;
+              input.value = val;
+              updateAll();
+            });
+            input.addEventListener("input", (e) => {
+              const val = parseFloat(e.target.value);
+              if (!isNaN(val)) {
+                state[paramName] = val;
+                slider.value = val;
+                updateAll();
+              }
+            });
+          };
+
+          bindSlider(el.sliderA, el.inputA, "a");
+          bindSlider(el.sliderB, el.inputB, "b");
+          bindSlider(el.sliderC, el.inputC, "c");
+          bindSlider(el.sliderD, el.inputD, "d");
+
+          window.addEventListener("keydown", (e) => {
+            if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+            if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+              e.preventDefault();
+              const idx = PRIMES.indexOf(state.p);
+              if (idx > 0) setPrime(PRIMES[idx - 1]);
+            } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+              e.preventDefault();
+              const idx = PRIMES.indexOf(state.p);
+              if (idx < PRIMES.length - 1) setPrime(PRIMES[idx + 1]);
+            } else if (e.key === " ") {
+              e.preventDefault();
+              toggleSweep();
+            }
+          });
+        }
+
+        function init() {
+          populatePrimeSelect();
+          setupEvents();
+          loadTemplate("theorem_piecewise");
+        }
+
+        init();
+      })();
+    </script>
+</body>
+
+</html>
