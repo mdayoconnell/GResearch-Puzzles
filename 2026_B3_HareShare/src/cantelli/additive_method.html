@@ -679,10 +679,9 @@
     (() => {
       "use strict";
 
-      const primes = [
-        3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41,
-        43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97,
-      ];
+      const primes = [...new Set(
+        Object.keys(window.HARE_SHARE_MAXIMA || {}).map(key => Number(key.split(",")[0]))
+      )].sort((a, b) => a - b);
       const elements = {
         prime: document.querySelector("#prime"),
         minutes: document.querySelector("#minutes"),
@@ -841,7 +840,10 @@
       }
 
       function calculate() {
-        const matrix = [];
+        const matrix = Array.from(
+          { length: state.p },
+          () => Array(state.p).fill(0)
+        );
         const conditionalDistribution = Array(state.t + 2).fill(0);
         let survivors = 0;
         let globalTotal = 0;
@@ -849,11 +851,31 @@
         let conditionalTotal = 0;
         let conditionalSquares = 0;
         let conditionalCount = 0;
+        // Each nonzero jump orders Z/pZ into one cycle. Sliding a window of
+        // t+1 landings around that cycle fills a matrix column in O(p), so
+        // the full matrix remains O(p^2) even for the larger data range.
         for (let x = 0; x < state.p; x += 1) {
-          const row = [];
+          matrix[x][0] = state.set.has(x) ? state.t + 1 : 0;
+        }
+        for (let a = 1; a < state.p; a += 1) {
+          const positions = Array.from(
+            { length: state.p },
+            (_, step) => mod(step * a)
+          );
+          const stumpBits = positions.map(position => state.set.has(position) ? 1 : 0);
+          let windowSum = 0;
+          for (let step = 0; step <= state.t; step += 1) {
+            windowSum += stumpBits[step];
+          }
+          for (let step = 0; step < state.p; step += 1) {
+            matrix[positions[step]][a] = windowSum;
+            windowSum += stumpBits[(step + state.t + 1) % state.p] - stumpBits[step];
+          }
+        }
+
+        for (let x = 0; x < state.p; x += 1) {
           for (let a = 0; a < state.p; a += 1) {
-            const value = xValue(x, a);
-            row.push(value);
+            const value = matrix[x][a];
             globalTotal += value;
             globalSquares += value * value;
             if (state.set.has(x) && value === state.t + 1) survivors += 1;
@@ -864,7 +886,6 @@
               conditionalCount += 1;
             }
           }
-          matrix.push(row);
         }
         const conditionalMean = conditionalCount
           ? conditionalTotal / conditionalCount
