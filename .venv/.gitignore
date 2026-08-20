@@ -1,0 +1,9 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+
+/2026_B3_HareShare/*
+!/2026_B3_HareShare/src
+/2026_B3_HareShare/src/for_codex/*
+2026_B3_HareShare/src/sims/*
+2026_B3_HareShare/src/tex_submission/*
+2026_B3_HareShare/src/tex_submission/HareShare.tex
+2026_B3_HareShare/src/tex_submission/HareShare.pdf
